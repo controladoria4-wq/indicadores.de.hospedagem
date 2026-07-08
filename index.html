@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laghetto — Indicadores Hoteleiros</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f5fa;--card:#fff;
+  --ve:#0a2d23;--vm:#12443f;--vc:#2a606a;
+  --azul:#b4d4df;--vagua:#ffffff;--marrom:#cfccbf;
+  --text:#0a2d23;--muted:#6b8a8e;--border:#d4e2e8;
+  --green:#1a6b50;--red:#b03030;
+  --sh:0 2px 12px rgba(10,45,35,0.08);--sh2:0 6px 24px rgba(10,45,35,0.12);
+}
+body{background:var(--bg);color:var(--text);font-family:"Source Sans Pro",sans-serif;font-size:14px;min-height:100vh}
+
+header{background:var(--ve);height:56px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(10,45,35,.28)}
+.logo{font-family:"Inter",sans-serif;font-weight:900;font-size:18px;color:#ffffff;letter-spacing:-.5px}
+.logo span{color:#b4d4df;font-weight:300}
+.hbadge{background:rgba(199,241,197,.14);border:1px solid rgba(199,241,197,.22);padding:3px 12px;border-radius:20px;font-size:11px;color:#ffffff;font-family:"Inter",sans-serif;font-weight:600}
+
+.tabs{background:var(--vm);padding:0 28px;display:flex;border-bottom:3px solid var(--vc)}
+.tab{padding:11px 22px;font-family:"Inter",sans-serif;font-size:11px;font-weight:700;cursor:pointer;color:rgba(199,241,197,.55);border-bottom:3px solid transparent;margin-bottom:-3px;transition:all .2s;text-transform:uppercase;letter-spacing:.8px}
+.tab.active{color:#ffffff;border-bottom-color:#ffffff}
+.tab:hover:not(.active){color:rgba(199,241,197,.85)}
+
+.main{padding:20px 28px}
+
+/* FILTER PANEL */
+.fp{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;box-shadow:var(--sh)}
+.fp-title{font-family:"Inter",sans-serif;font-size:10px;font-weight:800;color:var(--vc);text-transform:uppercase;letter-spacing:1.3px;margin-bottom:11px;display:flex;align-items:center;gap:7px}
+.fp-title::before{content:"";width:3px;height:13px;background:var(--vc);border-radius:2px;display:block}
+.fr{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-family:"Inter",sans-serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.fg select,.mb{background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:6px 28px 6px 10px;border-radius:7px;font-family:"Source Sans Pro",sans-serif;font-size:13px;cursor:pointer;min-width:118px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9'%3E%3Cpath fill='%232a606a' d='M4.5 6.5L0 2h9z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;font-weight:600;transition:border-color .18s}
+.fg select:focus,.mb:focus{outline:none;border-color:var(--vc);box-shadow:0 0 0 3px rgba(42,96,106,.1)}
+.fg select:hover,.mb:hover{border-color:var(--vc)}
+
+/* Period range inline */
+
+
+.fdiv{width:1px;height:36px;background:var(--border);align-self:flex-end;margin:0 2px}
+.mwrap{position:relative}
+.mb{display:flex;align-items:center;justify-content:space-between;gap:6px;user-select:none;min-width:138px;padding-right:26px}
+.mdrop{position:absolute;top:calc(100% + 4px);left:0;z-index:400;background:#fff;border:1.5px solid var(--border);border-radius:9px;min-width:200px;padding:5px 0;display:none;box-shadow:var(--sh2);max-height:240px;overflow-y:auto}
+.mdrop.open{display:block}
+.mopt{display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:13px;transition:background .1s;color:var(--text)}
+.mopt:hover{background:var(--bg)}
+.mopt input{accent-color:var(--vc);width:13px;height:13px;flex-shrink:0}
+.mbadge{background:var(--vc);color:#fff;border-radius:8px;font-size:10px;font-weight:800;padding:1px 5px;font-family:"Inter",sans-serif;flex-shrink:0}
+.reset-btn{background:#fff;border:1.5px solid var(--border);color:var(--muted);padding:6px 13px;border-radius:7px;cursor:pointer;font-size:11px;font-family:"Inter",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.5px;transition:all .18s}
+.reset-btn:hover{border-color:var(--vc);color:var(--vc)}
+.search-btn{background:var(--vc);border:1.5px solid var(--vc);color:#fff;padding:6px 16px;border-radius:7px;cursor:pointer;font-size:11px;font-family:"Inter",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.5px;transition:all .18s;white-space:nowrap}
+.search-btn:hover{background:var(--vm);border-color:var(--vm)}
+.search-btn.dirty{background:var(--ve);border-color:var(--ve);box-shadow:0 0 0 3px rgba(10,45,35,0.18);animation:pulse 1.4s infinite}
+.export-btn{background:#fff;border:1.5px solid var(--border);color:var(--vc);padding:6px 14px;border-radius:7px;cursor:pointer;font-size:11px;font-family:"Inter",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.5px;transition:all .18s;white-space:nowrap}
+.export-btn:hover{background:var(--vc);border-color:var(--vc);color:#fff}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(10,45,35,0.18)}50%{box-shadow:0 0 0 6px rgba(10,45,35,0.08)}}
+
+/* TAGS / PERIOD */
+.tags{display:flex;gap:6px;flex-wrap:wrap;min-height:20px;margin-bottom:10px}
+.tag{background:#e4f0eb;border:1.5px solid var(--vc);color:var(--vc);font-size:11px;padding:2px 9px;border-radius:18px;display:flex;align-items:center;gap:4px;font-family:"Inter",sans-serif;font-weight:700}
+.tag .x{cursor:pointer;opacity:.5;font-size:13px;line-height:1}.tag .x:hover{opacity:1}
+.period-info{font-family:"Inter",sans-serif;font-size:12px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.period-info strong{color:var(--vm)}
+.period-chip{background:var(--vm);color:#ffffff;font-family:"Inter",sans-serif;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.kpi{border-radius:11px;padding:14px 16px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:6px}
+.kpi-0{background:var(--ve);color:#ffffff}
+.kpi-1{background:var(--vm);color:#ffffff}
+.kpi-2{background:var(--vc);color:#f0f5fa}
+.kpi-3{background:var(--azul);color:var(--ve)}
+.kpi-4{background:var(--vagua);color:var(--ve)}
+.kpi-lbl{font-family:"Inter",sans-serif;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.65}
+.kpi-body{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
+.kpi-side{flex:1;min-width:0}
+.kpi-side-tag{font-family:"Inter",sans-serif;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;opacity:.5;margin-bottom:3px}
+.kpi-val{font-family:"Inter",sans-serif;font-size:17px;font-weight:900;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-sub{font-size:10px;opacity:.6;margin-top:3px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.kpi-var{font-family:"Inter",sans-serif;font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px}
+.kpi-0 .kpi-var.pos,.kpi-1 .kpi-var.pos{background:rgba(199,241,197,.2);color:#ffffff}
+.kpi-0 .kpi-var.neg,.kpi-1 .kpi-var.neg{background:rgba(255,100,100,.2);color:#ffaaaa}
+.kpi-2 .kpi-var.pos{background:rgba(240,245,250,.2);color:#f0f5fa}
+.kpi-2 .kpi-var.neg{background:rgba(255,100,100,.2);color:#ffcccc}
+.kpi-3 .kpi-var.pos,.kpi-4 .kpi-var.pos{background:rgba(10,45,35,.1);color:var(--ve)}
+.kpi-3 .kpi-var.neg,.kpi-4 .kpi-var.neg{background:rgba(176,48,48,.12);color:#7a1010}
+.kpi-div{width:1px;background:currentColor;opacity:.15;align-self:stretch;margin:2px 0;flex-shrink:0}
+
+/* VIEWS */
+.view{display:none}.view.active{display:block}
+
+/* TABLE */
+.twrap{overflow-x:auto;border-radius:11px;border:1.5px solid var(--border);box-shadow:var(--sh)}
+table{width:100%;border-collapse:collapse;background:#fff;min-width:900px}
+thead tr.th1 th{font-family:"Inter",sans-serif;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.9px;padding:11px 12px;text-align:center;border-bottom:1px solid var(--border)}
+thead tr.th1 .th-ind{background:var(--ve);color:#b4d4df;text-align:left;width:150px}
+thead tr.th1 .th-mes{background:var(--vm);color:#ffffff}
+thead tr.th1 .th-acum{background:var(--vc);color:#f0f5fa;border-left:3px solid var(--azul)}
+thead tr.th2 th{background:var(--bg);font-family:"Inter",sans-serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:7px 10px;text-align:right;border-bottom:2px solid var(--border)}
+thead tr.th2 th:first-child{text-align:left;padding-left:14px}
+thead tr.th2 .th-var-orc{color:var(--vm);background:#eaf2ef}
+thead tr.th2 .th-var-25{color:#6b8a8e;background:#fff}
+thead tr.th2 .sep{border-left:3px solid var(--azul)!important}
+tbody tr{border-bottom:1px solid #eef3f6;transition:background .1s}
+tbody tr:hover{background:#f6faf8}
+tbody tr:last-child{border-bottom:none}
+td{padding:12px 10px;text-align:right;font-size:13px;vertical-align:middle}
+td:first-child{text-align:left;font-family:"Inter",sans-serif;font-weight:800;font-size:11px;color:var(--ve);padding-left:14px;text-transform:uppercase;letter-spacing:.5px}
+.td-orc{color:#8a9fa8;font-weight:400;font-size:12px}
+.td-r26{color:var(--ve);font-weight:700}
+.td-r25{color:#8a9fa8;font-weight:400;font-size:12px}
+.td-sep{border-left:3px solid var(--azul)!important}
+.vp{display:inline-flex;align-items:center;gap:2px;color:var(--green);font-family:"Inter",sans-serif;font-size:11px;font-weight:800;background:#d6f0e6;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.vn{display:inline-flex;align-items:center;gap:2px;color:var(--red);font-family:"Inter",sans-serif;font-size:11px;font-weight:800;background:#fde8e8;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.vz{color:var(--muted);font-size:11px;font-family:"Inter",sans-serif}
+
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.chart-col{display:flex;flex-direction:column;gap:0}
+.chart-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
+/* Sub-tabs dentro de cada card */
+.cc-tabs{display:flex;border-bottom:1px solid var(--border)}
+.cctab{flex:1;padding:7px 4px;font-family:"Inter",sans-serif;font-size:10px;font-weight:700;cursor:pointer;color:var(--muted);text-align:center;transition:all .15s;text-transform:uppercase;letter-spacing:.5px;border-right:1px solid var(--border);background:var(--bg)}
+.cctab:last-child{border-right:none}
+.cctab.active{background:var(--vc);color:#fff}
+.cctab:hover:not(.active){background:#e4eff8;color:var(--vc)}
+.cc-body{padding:16px 18px 14px}
+.chart-card{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:18px 20px 14px;box-shadow:var(--sh)}
+.chart-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.cch-left{display:flex;align-items:center;gap:9px}
+.cch-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.cch-title{font-family:"Inter",sans-serif;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--ve)}
+.cch-var{font-family:"Inter",sans-serif;font-size:12px;font-weight:800}
+.cch-var.pos{color:var(--green)}.cch-var.neg{color:var(--red)}.cch-var.neu{color:var(--muted)}
+.cch-vars{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.cch-var-row{display:flex;align-items:center;gap:5px;font-family:"Inter",sans-serif;font-size:11px;font-weight:700}
+.cch-var-lbl{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.card-legend{display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+.cl-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-family:"Inter",sans-serif;font-weight:600}
+.cl-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.ch-wrap{height:175px;position:relative}
+canvas{display:block}
+
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,1fr)};.chart-grid{grid-template-columns:1fr}}
+@media(max-width:800px){.main{padding:12px 14px}.kpi-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){.main{padding:12px 14px}.kpi-grid{grid-template-columns:1fr 1fr}}
+
+/* ── RESUMO HOTÉIS ── */
+body.tab-resumo .fp,
+body.tab-resumo .tags,
+body.tab-resumo .period-info,
+body.tab-resumo #kpiCards,
+body.tab-resumo #emptyState{display:none !important}
+body.tab-resumo .main{padding-top:16px}
+.resumo-wrap{max-width:860px;margin:0 auto;padding:4px 0}
+.resumo-selector{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.resumo-selector label{font-family:"Inter",sans-serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.resumo-selector select{background:var(--bg);border:1.5px solid var(--border);color:var(--text);padding:7px 28px 7px 11px;border-radius:8px;font-family:"Source Sans Pro",sans-serif;font-size:14px;font-weight:600;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='9' viewBox='0 0 9 9'%3E%3Cpath fill='%232a606a' d='M4.5 6.5L0 2h9z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;min-width:220px;transition:border-color .18s}
+.resumo-selector select:focus{outline:none;border-color:var(--vc)}
+.rh-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(10,45,35,0.08)}
+.rh-header{background:var(--vm);padding:22px 28px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.rh-hotel-name{font-family:"Inter",sans-serif;font-size:18px;font-weight:900;color:#fff;letter-spacing:-.5px;margin-bottom:4px}
+.rh-hotel-sub{font-size:12px;color:rgba(255,255,255,0.55);font-family:"Inter",sans-serif}
+.rh-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.rh-badge{background:rgba(180,212,223,0.18);border:1px solid rgba(180,212,223,0.3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;color:#b4d4df;font-family:"Inter",sans-serif}
+.rh-update{font-size:11px;color:rgba(255,255,255,0.75);font-family:"Inter",sans-serif;text-align:right;margin-top:auto;white-space:nowrap;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);padding:5px 12px;border-radius:8px;font-weight:600}
+.rh-body{}
+.rh-section{padding:20px 28px;border-bottom:1px solid var(--border)}
+.rh-section:last-child{border-bottom:none}
+.rh-section-title{font-family:"Inter",sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--vc);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.rh-section-title::before{content:"";width:3px;height:14px;background:var(--vc);border-radius:2px;display:block;flex-shrink:0}
+.rh-info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rh-info-item{background:var(--bg);border-radius:9px;padding:12px 14px}
+.rh-info-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;font-family:"Inter",sans-serif}
+.rh-info-val{font-size:14px;font-weight:700;color:var(--ve);font-family:"Inter",sans-serif;line-height:1.2}
+.rh-contrato-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rh-contrato-card{background:var(--bg);border-radius:10px;padding:14px 16px;border-left:3px solid var(--vc)}
+.rh-contrato-title{font-family:"Inter",sans-serif;font-size:11px;font-weight:800;color:var(--vc);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.rh-contrato-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rh-contrato-row:last-child{border-bottom:none}
+.rh-contrato-row .lbl{color:var(--muted);font-weight:400}
+.rh-contrato-row .val{font-weight:700;color:var(--ve);font-family:"Inter",sans-serif;text-align:right}
+.rh-aeb-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.rh-aeb-card{background:var(--bg);border-radius:9px;padding:12px 14px;text-align:center}
+.rh-aeb-val{font-size:18px;font-weight:900;color:var(--ve);font-family:"Inter",sans-serif}
+.rh-aeb-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+.rh-empty{text-align:center;padding:60px 20px;color:var(--muted);font-family:"Inter",sans-serif}
+.rh-empty-icon{font-size:40px;margin-bottom:12px}
+.rh-empty-title{font-size:15px;font-weight:700;color:var(--ve);margin-bottom:6px}
+@media(max-width:768px){.rh-header{padding:16px}.rh-section{padding:16px}.rh-info-grid{grid-template-columns:1fr 1fr}.rh-contrato-grid{grid-template-columns:1fr}.rh-aeb-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:1100px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .chart-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:768px){
+  .main{padding:12px 14px}
+  header{padding:0 16px;height:52px}
+  .logo{font-size:16px}
+  .hbadge{font-size:10px;padding:3px 8px}
+  .tabs{padding:0 14px}
+  .tab{padding:10px 14px;font-size:10px;letter-spacing:.4px}
+  .fp{padding:12px 14px}
+  .fr{flex-direction:column;gap:8px;align-items:stretch}
+  .fg{width:100%}
+  .fg select,.mb{min-width:100%;width:100%;font-size:14px;padding:10px 32px 10px 12px}
+  .fdiv{display:none}
+  .mwrap{width:100%}
+  .mdrop{min-width:100%;left:0;right:0}
+  .btn-group{margin-left:0 !important;flex-direction:row !important;flex-wrap:nowrap}
+  .btn-group label{display:none}
+  .reset-btn,.search-btn,.export-btn{flex:1;padding:10px;font-size:12px;text-align:center}
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{padding:12px}
+  .kpi-lbl{font-size:8px}
+  .kpi-val{font-size:16px}
+  .kpi-body{gap:4px}
+  .kpi-side .kpi-val{font-size:13px}
+  .twrap{border-radius:8px}
+  table{min-width:680px;font-size:11px}
+  thead tr.th1 th{font-size:9px;padding:8px;letter-spacing:.5px}
+  thead tr.th2 th{font-size:8px;padding:6px 8px}
+  td{padding:9px 8px;font-size:11px}
+  td:first-child{font-size:9px;padding-left:10px}
+  .vp,.vn{font-size:9px;padding:1px 4px}
+  .chart-grid{grid-template-columns:1fr;gap:12px}
+  .chart-card{padding:14px 14px 12px}
+  .cc-tabs{overflow-x:auto}
+  .cctab{padding:7px 12px;font-size:9px;white-space:nowrap;flex:none}
+  .ch-wrap{height:160px}
+  .rh-header{padding:16px}
+  .rh-section{padding:16px}
+  .rh-info-grid{grid-template-columns:1fr 1fr}
+  .rh-contrato-grid{grid-template-columns:1fr}
+  .rh-aeb-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:420px){
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:6px}
+  .kpi{padding:10px}
+  .kpi-val{font-size:14px}
+  .kpi-div{display:none}
+  .kpi-side:last-child{display:none}
+  .logo{font-size:14px}
+  .hbadge:last-child{display:none}
+  table{min-width:560px;font-size:10px}
+  td{padding:7px 6px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Laghetto <span>Hotéis</span></div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <div class="hbadge">Indicadores de Performance</div>
+    <div class="hbadge" id="hCount">24 empreendimentos</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('resumo')">🏨 &nbsp;Resumo Hotéis</div>
+  <div class="tab" onclick="switchTab('tabela')">📊 &nbsp;Analítico de Indicadores</div>
+  <div class="tab" onclick="switchTab('graficos')">📈 &nbsp;Gráficos de Indicadores</div>
+</div>
+
+<div class="main">
+
+  <!-- FILTROS -->
+  <div class="fp">
+    <div class="fp-title">Filtros</div>
+    <div class="fr">
+
+      <!-- Ano principal -->
+      <div class="fg">
+        <label>Ano Principal</label>
+        <select id="selAno" onchange="render()"><option value="2026" selected>2026</option></select>
+      </div>
+
+      <!-- Mês simples -->
+      <div class="fg">
+        <label>Mês (até)</label>
+        <select id="selMes" onchange="markDirty()">
+          <option value="1">Janeiro</option>
+          <option value="2">Fevereiro</option>
+          <option value="3">Março</option>
+          <option value="4">Abril</option>
+          <option value="5" selected>Maio</option>
+          <option value="6">Junho</option>
+          <option value="7">Julho</option>
+          <option value="8">Agosto</option>
+          <option value="9">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+      </div>
+
+      <!-- Ano anterior: opcional, multi-seleção -->
+      <div class="fg">
+        <label>Ano Anterior</label>
+        <div class="mwrap">
+          <div class="mb" onclick="toggleDrop(event,'dAnoAnt')">
+            <span id="lAnoAnt">2025</span>
+            <span class="mbadge" id="bAnoAnt" style="display:none">0</span>
+          </div>
+          <div class="mdrop" id="dAnoAnt"></div>
+        </div>
+      </div>
+
+      <div class="fdiv"></div>
+
+      <div class="fg"><label>Empreendimento</label>
+        <div class="mwrap"><div class="mb" onclick="toggleDrop(event,'dEmp')"><span id="lEmp">Todos</span><span class="mbadge" id="bEmp" style="display:none">0</span></div>
+        <div class="mdrop" id="dEmp"></div></div></div>
+
+      <div class="fg"><label>Modelo</label>
+        <div class="mwrap"><div class="mb" onclick="toggleDrop(event,'dMod')"><span id="lMod">Todos</span><span class="mbadge" id="bMod" style="display:none">0</span></div>
+        <div class="mdrop" id="dMod"></div></div></div>
+
+
+
+      <div class="fdiv"></div>
+
+      <div class="fg"><label>Praça</label>
+        <div class="mwrap"><div class="mb" onclick="toggleDrop(event,'dPraca')"><span id="lPraca">Todas</span><span class="mbadge" id="bPraca" style="display:none">0</span></div>
+        <div class="mdrop" id="dPraca"></div></div></div>
+
+      <div class="fdiv"></div>
+
+      <div class="fg"><label>Regional</label>
+        <div class="mwrap"><div class="mb" onclick="toggleDrop(event,'dReg')"><span id="lReg">Todas</span><span class="mbadge" id="bReg" style="display:none">0</span></div>
+        <div class="mdrop" id="dReg"></div></div></div>
+
+      <div class="fg" style="margin-left:auto;display:flex;gap:8px;align-items:flex-end"><label>&nbsp;</label>
+        <button class="reset-btn" onclick="resetAll()">↺ Limpar</button>
+        <button class="search-btn" id="searchBtn" onclick="doSearch()">🔍 Pesquisar</button>
+        <button class="export-btn" onclick="exportExcel()">⬇ Excel</button></div>
+    </div>
+  </div>
+
+  <div class="tags" id="activeTags"></div>
+  <div class="period-info" id="periodLine"></div>
+  <div id="emptyState" style="display:none;background:#fff;border:1.5px dashed #d4e2e8;border-radius:12px;padding:48px 32px;text-align:center;margin-bottom:20px;box-shadow:0 2px 12px rgba(10,45,35,0.06)">
+    <div style="font-size:36px;margin-bottom:12px">🏨</div>
+    <div style="font-family:'Inter',sans-serif;font-weight:800;font-size:16px;color:#0a2d23;margin-bottom:6px">Selecione os empreendimentos</div>
+    <div style="font-size:13px;color:#6b8a8e">Escolha <strong>Todos</strong> ou selecione hotéis específicos no filtro <strong>Empreendimento</strong>, depois clique em <strong>🔍 Pesquisar</strong></div>
+  </div>
+  <div class="kpi-grid" id="kpiCards"></div>
+
+  <!-- TABELA -->
+  <div class="view" id="view-tabela">
+    <div class="twrap">
+      <table>
+        <thead>
+          <tr class="th1">
+            <th class="th-ind">Indicador</th>
+            <th class="th-mes" colspan="5" id="thMes">—</th>
+            <th class="th-acum sep" colspan="5" id="thAcum">—</th>
+          </tr>
+          <tr class="th2" id="th2row">
+            <th>—</th>
+            <th id="thR25m" class="th-r25">Real. 2025</th>
+            <th id="thOrc26m">Orçado 2026</th><th>Real. 2026</th>
+            <th class="th-var-orc">Var% Orç</th><th id="thVar25m" class="th-var-25">Var% 2025</th>
+            <th class="sep" id="thR25a">Real. 2025</th>
+            <th id="thOrc26a">Orçado 2026</th><th>Real. 2026</th>
+            <th class="th-var-orc">Var% Orç</th><th id="thVar25a" class="th-var-25">Var% 2025</th>
+          </tr>
+        </thead>
+        <tbody id="tBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RESUMO HOTÉIS -->
+  <div class="view active" id="view-resumo">
+    <div class="resumo-wrap">
+      <div class="resumo-selector">
+        <label>Selecione o hotel</label>
+        <select id="selResumoHotel" onchange="renderResumo()">
+          <option value="">— escolha um hotel —</option>
+        </select>
+      </div>
+      <div id="resumoContent">
+        <div class="rh-empty"><div class="rh-empty-icon">🏨</div><div class="rh-empty-title">Selecione um hotel</div><div style="font-size:13px;color:var(--muted)">Escolha um empreendimento acima para visualizar sua folha de rosto</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICOS -->
+  <div class="view" id="view-graficos">
+    <div class="chart-grid" id="chartGrid"></div>
+  </div>
+
+</div>
+
+<script>
+const DB = {"hotels": [{"nome": "Barra", "pool": 303, "praca": "Rio de Janeiro", "modelo": "Administrado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 303, "2": 303, "3": 303, "4": 303, "5": 303, "6": 303, "7": 303, "8": 303, "9": 303, "10": 303, "11": 303, "12": 303}, "pool_mensal_2026": {"1": 303, "2": 303, "3": 303, "4": 303, "5": 303, "6": 303, "7": 303, "8": 303, "9": 303, "10": 303, "11": 303, "12": 303}}, {"nome": "Bento", "pool": 121, "praca": "Bento Gonçalves", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 121, "2": 121, "3": 121, "4": 121, "5": 121, "6": 121, "7": 121, "8": 121, "9": 121, "10": 121, "11": 121, "12": 121}, "pool_mensal_2026": {"1": 121, "2": 121, "3": 121, "4": 121, "5": 121, "6": 121, "7": 121, "8": 121, "9": 121, "10": 121, "11": 121, "12": 121}}, {"nome": "Borges", "pool": 128, "praca": "Gramado", "modelo": "Locado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": 128, "2": 128, "3": 128, "4": 128, "5": 128, "6": 128, "7": 128, "8": 128, "9": 128, "10": 128, "11": 128, "12": 128}, "pool_mensal_2026": {"1": 128, "2": 128, "3": 128, "4": 128, "5": 128, "6": 128, "7": 128, "8": 128, "9": 128, "10": 128, "11": 128, "12": 128}}, {"nome": "Canela", "pool": 167, "praca": "Canela", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 168, "2": 168, "3": 168, "4": 168, "5": 168, "6": 168, "7": 167, "8": 167, "9": 167, "10": 167, "11": 167, "12": 167}, "pool_mensal_2026": {"1": 167, "2": 167, "3": 167, "4": 167, "5": 167, "6": 167, "7": 167, "8": 167, "9": 167, "10": 167, "11": 167, "12": 167}}, {"nome": "Centro", "pool": 64, "praca": "Gramado", "modelo": "Locado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": 64, "2": 64, "3": 64, "4": 64, "5": 64, "6": 64, "7": 64, "8": 64, "9": 64, "10": 64, "11": 64, "12": 64}, "pool_mensal_2026": {"1": 64, "2": 64, "3": 64, "4": 64, "5": 64, "6": 64, "7": 64, "8": 64, "9": 64, "10": 64, "11": 64, "12": 64}}, {"nome": "Chateau Collection", "pool": 30, "praca": "Gramado", "modelo": "Administrado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": 30, "2": 30, "3": 30, "4": 30, "5": 30, "6": 30, "7": 30, "8": 30, "9": 30, "10": 30, "11": 30, "12": 30}, "pool_mensal_2026": {"1": 30, "2": 30, "3": 30, "4": 30, "5": 30, "6": 30, "7": 30, "8": 30, "9": 30, "10": 30, "11": 30, "12": 30}}, {"nome": "Estação", "pool": 165, "praca": "Bento Gonçalves", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 165, "2": 165, "3": 165, "4": 165, "5": 165, "6": 165, "7": 165, "8": 165, "9": 165, "10": 165, "11": 165, "12": 165}, "pool_mensal_2026": {"1": 165, "2": 165, "3": 115, "4": 115, "5": 115, "6": 115, "7": 115, "8": 115, "9": 115, "10": 115, "11": 115, "12": 115}}, {"nome": "Fratello", "pool": 58, "praca": "Gramado", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 54, "2": 54, "3": 54, "4": 54, "5": 54, "6": 54, "7": 54, "8": 54, "9": 54, "10": 54, "11": 58, "12": 58}, "pool_mensal_2026": {"1": 58, "2": 58, "3": 58, "4": 58, "5": 58, "6": 58, "7": 58, "8": 58, "9": 58, "10": 58, "11": 58, "12": 58}}, {"nome": "Garden", "pool": 69, "praca": "Gramado", "modelo": "Locado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": null, "2": 70, "3": 70, "4": 69, "5": 69, "6": 69, "7": 69, "8": 69, "9": 69, "10": 69, "11": 69, "12": 69}, "pool_mensal_2026": {"1": 69, "2": 69, "3": 69, "4": 69, "5": 69, "6": 69, "7": 69, "8": 69, "9": 69, "10": 69, "11": 69, "12": 69}}, {"nome": "Golden Resort", "pool": 220, "praca": "Gramado", "modelo": "Administrado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": 220, "2": 220, "3": 220, "4": 220, "5": 220, "6": 220, "7": 220, "8": 220, "9": 220, "10": 220, "11": 220, "12": 220}, "pool_mensal_2026": {"1": 220, "2": 220, "3": 220, "4": 220, "5": 220, "6": 220, "7": 220, "8": 220, "9": 220, "10": 220, "11": 220, "12": 220}}, {"nome": "Gramado", "pool": 96, "praca": "Gramado", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 96, "2": 96, "3": 96, "4": 96, "5": 96, "6": 96, "7": 96, "8": 96, "9": 96, "10": 96, "11": 96, "12": 96}, "pool_mensal_2026": {"1": 96, "2": 96, "3": 96, "4": 96, "5": 96, "6": 96, "7": 96, "8": 96, "9": 96, "10": 96, "11": 96, "12": 96}}, {"nome": "Higienópolis", "pool": 104, "praca": "Porto Alegre", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 104, "2": 104, "3": 104, "4": 104, "5": 104, "6": 104, "7": 104, "8": 104, "9": 104, "10": 104, "11": 104, "12": 104}, "pool_mensal_2026": {"1": 104, "2": 104, "3": 104, "4": 104, "5": 104, "6": 104, "7": 104, "8": 104, "9": 104, "10": 104, "11": 104, "12": 104}}, {"nome": "LSH Lifestyle Hotel", "pool": 158, "praca": "Rio de Janeiro", "modelo": "Administrado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 158, "2": 158, "3": 158, "4": 158, "5": 158, "6": 158, "7": 158, "8": 158, "9": 158, "10": 158, "11": 158, "12": 158}, "pool_mensal_2026": {"1": 158, "2": 158, "3": 158, "4": 158, "5": 158, "6": 158, "7": 158, "8": 158, "9": 158, "10": 158, "11": 158, "12": 158}}, {"nome": "Moinhos", "pool": 132, "praca": "Porto Alegre", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 132, "2": 132, "3": 132, "4": 132, "5": 132, "6": 132, "7": 132, "8": 132, "9": 132, "10": 132, "11": 132, "12": 132}, "pool_mensal_2026": {"1": 132, "2": 132, "3": 132, "4": 132, "5": 132, "6": 132, "7": 132, "8": 132, "9": 132, "10": 132, "11": 132, "12": 132}}, {"nome": "Pedras Altas", "pool": 171, "praca": "Gramado", "modelo": "Locado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": 171, "2": 171, "3": 171, "4": 171, "5": 171, "6": 171, "7": 171, "8": 171, "9": 171, "10": 171, "11": 171, "12": 171}, "pool_mensal_2026": {"1": 171, "2": 171, "3": 171, "4": 171, "5": 171, "6": 171, "7": 171, "8": 171, "9": 171, "10": 171, "11": 171, "12": 171}}, {"nome": "Premio", "pool": 72, "praca": "Gramado", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 72, "2": 72, "3": 72, "4": 72, "5": 72, "6": 72, "7": 72, "8": 72, "9": 72, "10": 72, "11": 72, "12": 72}, "pool_mensal_2026": {"1": 72, "2": 72, "3": 72, "4": 72, "5": 72, "6": 72, "7": 72, "8": 72, "9": 72, "10": 72, "11": 72, "12": 72}}, {"nome": "Rio Grande", "pool": 168, "praca": "Rio Grande", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 168, "2": 168, "3": 168, "4": 168, "5": 168, "6": 168, "7": 168, "8": 168, "9": 168, "10": 168, "11": 168, "12": 168}, "pool_mensal_2026": {"1": 168, "2": 168, "3": 168, "4": 168, "5": 168, "6": 168, "7": 168, "8": 168, "9": 168, "10": 168, "11": 168, "12": 168}}, {"nome": "São Paulo", "pool": 158, "praca": "São Paulo", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 154, "2": 154, "3": 154, "4": 158, "5": 158, "6": 158, "7": 158, "8": 158, "9": 158, "10": 158, "11": 158, "12": 158}, "pool_mensal_2026": {"1": 158, "2": 158, "3": 158, "4": 162, "5": 162, "6": 162, "7": 162, "8": 162, "9": 162, "10": 162, "11": 162, "12": 162}}, {"nome": "Siena", "pool": 180, "praca": "Gramado", "modelo": "Administrado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 180, "2": 180, "3": 180, "4": 180, "5": 180, "6": 180, "7": 180, "8": 180, "9": 180, "10": 180, "11": 180, "12": 180}, "pool_mensal_2026": {"1": 180, "2": 180, "3": 180, "4": 180, "5": 180, "6": 180, "7": 180, "8": 180, "9": 180, "10": 180, "11": 180, "12": 180}}, {"nome": "Toscana", "pool": 108, "praca": "Gramado", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 108, "2": 108, "3": 108, "4": 108, "5": 108, "6": 108, "7": 108, "8": 108, "9": 108, "10": 108, "11": 108, "12": 108}, "pool_mensal_2026": {"1": 108, "2": 108, "3": 108, "4": 108, "5": 108, "6": 108, "7": 108, "8": 108, "9": 108, "10": 108, "11": 108, "12": 108}}, {"nome": "Viale", "pool": 87, "praca": "Gramado", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 87, "2": 87, "3": 87, "4": 87, "5": 87, "6": 87, "7": 87, "8": 87, "9": 87, "10": 87, "11": 87, "12": 87}, "pool_mensal_2026": {"1": 87, "2": 87, "3": 87, "4": 87, "5": 87, "6": 87, "7": 87, "8": 87, "9": 87, "10": 87, "11": 87, "12": 87}}, {"nome": "Villa Moura", "pool": 88, "praca": "Rio Grande", "modelo": "Locado", "regional": "R3", "empresa": "Laghetto", "pool_mensal_2025": {"1": 88, "2": 88, "3": 88, "4": 88, "5": 88, "6": 88, "7": 88, "8": 88, "9": 88, "10": 88, "11": 88, "12": 88}, "pool_mensal_2026": {"1": 88, "2": 88, "3": 88, "4": 88, "5": 88, "6": 88, "7": 88, "8": 88, "9": 88, "10": 88, "11": 88, "12": 88}}, {"nome": "Vita", "pool": 140, "praca": "Gramado", "modelo": "Locado", "regional": "R2", "empresa": "Laghetto", "pool_mensal_2025": {"1": 140, "2": 140, "3": 140, "4": 140, "5": 140, "6": 140, "7": 140, "8": 140, "9": 140, "10": 140, "11": 140, "12": 140}, "pool_mensal_2026": {"1": 140, "2": 140, "3": 140, "4": 140, "5": 140, "6": 140, "7": 140, "8": 140, "9": 140, "10": 140, "11": 140, "12": 140}}, {"nome": "Vivace", "pool": 125, "praca": "Canela", "modelo": "Locado", "regional": "R1", "empresa": "Laghetto", "pool_mensal_2025": {"1": 125, "2": 125, "3": 125, "4": 125, "5": 125, "6": 125, "7": 125, "8": 125, "9": 125, "10": 125, "11": 125, "12": 125}, "pool_mensal_2026": {"1": 125, "2": 125, "3": 125, "4": 125, "5": 125, "6": 125, "7": 125, "8": 125, "9": 125, "10": 125, "11": 125, "12": 125}}], "dias_mes": {"1": 31, "2": 28, "3": 31, "4": 30, "5": 31, "6": 30, "7": 31, "8": 31, "9": 30, "10": 31, "11": 30, "12": 31}, "rec_r26": {"Barra": {"1": 5462538.77, "2": 4758490.75, "3": 5120318.39, "4": 4386534.87, "5": 3670462.91, "6": 3431198.0, "7": 4270764.32, "8": 3641577.93, "9": 4023925.78, "10": 4460467.29, "11": 4583807.2, "12": 5360570.27}, "Bento": {"1": 590364.47, "2": 826181.44, "3": 868555.69, "4": 796656.02, "5": 1063828.19, "6": 966673.48, "7": 1240122.72, "8": 1261213.84, "9": 886993.15, "10": 849336.26, "11": 1020795.55, "12": 909604.32}, "Borges": {"1": 1709459.58, "2": 570458.09, "3": 1026192.2, "4": 1309642.07, "5": 1411708.94, "6": 1625349.4, "7": 2536760.6, "8": 1585385.15, "9": 1335965.0, "10": 1586856.51, "11": 2073998.65, "12": 2718064.97}, "Canela": {"1": 1465174.97, "2": 584358.77, "3": 882095.42, "4": 1018702.72, "5": 961760.58, "6": 1371915.96, "7": 2397723.03, "8": 1306118.07, "9": 1087347.08, "10": 1361691.19, "11": 1925739.52, "12": 2487199.76}, "Centro": {"1": 822421.09, "2": 352794.61, "3": 564898.21, "4": 713382.48, "5": 752477.65, "6": 944810.29, "7": 1401383.19, "8": 835012.89, "9": 668921.74, "10": 802307.0, "11": 1217124.96, "12": 1578023.12}, "Chateau Collection": {"1": 822255.89, "2": 457134.12, "3": 664565.36, "4": 717302.38, "5": 642662.57, "6": 656687.84, "7": 999398.17, "8": 548358.23, "9": 405667.26, "10": 590709.26, "11": 614308.77, "12": 743922.03}, "Estação": {"1": 397909.62, "2": 695169.36, "3": 633167.59, "4": 533578.87, "5": 824006.4, "6": 752200.05, "7": 1026792.15, "8": 1070862.69, "9": 727353.85, "10": 660516.68, "11": 804591.19, "12": 682036.65}, "Fratello": {"1": 518027.6, "2": 157767.96, "3": 276587.78, "4": 352495.61, "5": 391560.58, "6": 484001.09, "7": 766051.44, "8": 457849.05, "9": 355076.57, "10": 473903.15, "11": 728114.8, "12": 1077106.5}, "Garden": {"1": 0.0, "2": 0.0, "3": 0.0, "4": 0.0, "5": 0.0, "6": 8380.32, "7": 592809.14, "8": 483016.71, "9": 452878.82, "10": 681472.25, "11": 1071481.58, "12": 1275655.24}, "Golden Resort": {"1": 4510449.97, "2": 2283821.55, "3": 2349479.5, "4": 2536562.82, "5": 1790583.57, "6": 2145315.09, "7": 4604603.19, "8": 1873426.08, "9": 2019484.35, "10": 2546248.57, "11": 3139507.89, "12": 4480662.85}, "Gramado": {"1": 1057887.91, "2": 410149.91, "3": 696440.49, "4": 797506.71, "5": 783186.91, "6": 899870.04, "7": 1460908.18, "8": 938192.05, "9": 764385.19, "10": 909747.86, "11": 1306690.94, "12": 1775671.43}, "Higienópolis": {"1": 829499.51, "2": 759172.62, "3": 1000704.23, "4": 1070960.29, "5": 954931.23, "6": 938751.1, "7": 1079583.21, "8": 1135741.95, "9": 1177111.78, "10": 1158885.81, "11": 1098754.39, "12": 1009949.02}, "LSH Lifestyle Hotel": {"1": 3644911.81, "2": 3317665.49, "3": 3425315.73, "4": 2742818.92, "5": 2096434.68, "6": 2052576.2, "7": 2849950.39, "8": 2326876.09, "9": 2693514.75, "10": 3237161.53, "11": 2753646.53, "12": 3515707.7}, "Moinhos": {"1": 886553.8, "2": 867427.58, "3": 1270096.31, "4": 1349915.27, "5": 1509124.9, "6": 1427897.41, "7": 1521290.56, "8": 1484476.18, "9": 1570151.35, "10": 1573500.86, "11": 1491612.78, "12": 1244690.12}, "Pedras Altas": {"1": 1664308.73, "2": 664913.93, "3": 1106786.51, "4": 1360857.42, "5": 1487528.07, "6": 1715502.26, "7": 2338016.97, "8": 1638197.73, "9": 1285685.54, "10": 1630715.81, "11": 2334382.66, "12": 2932942.31}, "Premio": {"1": 625447.58, "2": 234334.05, "3": 399630.42, "4": 478520.19, "5": 498430.94, "6": 583396.21, "7": 880342.29, "8": 597777.72, "9": 493189.27, "10": 605398.37, "11": 892793.2, "12": 1083843.62}, "Rio Grande": {"1": 877557.51, "2": 803810.26, "3": 689260.69, "4": 660932.95, "5": 596451.95, "6": 504261.35, "7": 640263.64, "8": 499090.33, "9": 553786.46, "10": 634649.3, "11": 609545.48, "12": 720379.64}, "São Paulo": {"1": 1375230.7, "2": 1758833.77, "3": 2453152.83, "4": 2527299.57, "5": 2614872.58, "6": 2423925.25, "7": 2321308.01, "8": 2869470.61, "9": 2602375.33, "10": 2879671.08, "11": 3142291.05, "12": 2113048.56}, "Siena": {"1": 1519754.14, "2": 373292.32, "3": 854544.71, "4": 1095273.0, "5": 1141210.17, "6": 1518280.8, "7": 2491155.65, "8": 1197652.91, "9": 1117954.77, "10": 1392030.96, "11": 2276933.86, "12": 2813733.94}, "Toscana": {"1": 1060113.36, "2": 241453.25, "3": 448113.67, "4": 671669.67, "5": 663302.08, "6": 918150.25, "7": 1609475.11, "8": 890436.96, "9": 720654.23, "10": 895462.46, "11": 1460728.91, "12": 1869499.62}, "Viale": {"1": 668120.38, "2": 120513.49, "3": 375343.96, "4": 478434.78, "5": 492101.3, "6": 629735.61, "7": 1046237.67, "8": 605364.63, "9": 531800.6, "10": 619634.33, "11": 1128104.09, "12": 1307941.65}, "Villa Moura": {"1": 316889.02, "2": 396304.26, "3": 282843.6, "4": 286981.84, "5": 237444.9, "6": 249744.04, "7": 330530.55, "8": 319268.13, "9": 304586.48, "10": 414720.73, "11": 281205.86, "12": 312719.12}, "Vita": {"1": 1388267.17, "2": 260353.41, "3": 711278.72, "4": 1180250.79, "5": 1272638.41, "6": 1682529.71, "7": 2752475.05, "8": 1531892.92, "9": 1424538.54, "10": 1717091.36, "11": 2647130.81, "12": 3026288.96}, "Vivace": {"1": 861502.21, "2": 288051.72, "3": 521067.03, "4": 583254.0, "5": 570338.13, "6": 767427.28, "7": 1429956.74, "8": 747069.38, "9": 544913.65, "10": 802619.61, "11": 1193609.04, "12": 1647658.48}}, "rec_orc26": {"Barra": {"1": 6292370.7, "2": 5738577.6, "3": 4602570.0, "4": 4744980.0, "5": 4076562.0, "6": 4135950.0, "7": 5560656.0, "8": 4043686.5, "9": 5459454.0, "10": 4525547.4, "11": 4708620.0, "12": 5368099.5}, "Bento": {"1": 721692.4, "2": 914760.0, "3": 813967.0, "4": 943800.0, "5": 1287343.2, "6": 1118040.0, "7": 1345858.8, "8": 1311349.6, "9": 943800.0, "10": 921620.7, "11": 1067220.0, "12": 945252.0}, "Borges": {"1": 1934400.0, "2": 615014.4, "3": 1212224.0, "4": 1555200.0, "5": 1597516.8, "6": 1880832.0, "7": 2827200.0, "8": 1845120.0, "9": 1612800.0, "10": 1599104.0, "11": 2983680.0, "12": 3399782.4000000004}, "Canela": {"1": 1421784.0, "2": 880588.8, "3": 866611.2, "4": 1290240.0, "5": 1187424.0, "6": 1572480.0, "7": 2567544.0, "8": 1421784.0, "9": 1244880.0, "10": 1574899.2, "11": 2227680.0, "12": 2744616.0}, "Centro": {"1": 952320.0, "2": 540467.2, "3": 563852.8, "4": 779520.0, "5": 742809.6, "6": 1075200.0, "7": 1499904.0, "8": 1021363.2, "9": 871200.0, "10": 989520.0, "11": 1520640.0, "12": 1696320.0}, "Chateau Collection": {"1": 846300.0, "2": 548800.0, "3": 706552.0, "4": 705600.0, "5": 675651.2, "6": 688128.0, "7": 1048544.0, "8": 632772.0, "9": 411600.0, "10": 562464.0, "11": 829920.0, "12": 1145760.0}, "Estação": {"1": 447562.5, "2": 716100.0, "3": 601012.5, "4": 602910.0, "5": 951390.0, "6": 831600.0, "7": 1182588.0, "8": 1235272.5, "9": 813285.0, "10": 697174.5, "11": 813285.0, "12": 713542.5}, "Fratello": {"1": 597835.0, "2": 316680.0, "3": 336585.6, "4": 453096.0, "5": 444106.0, "6": 588816.0, "7": 825641.6, "8": 534905.0, "9": 461448.0, "10": 573921.6, "11": 779868.0, "12": 947546.0}, "Garden": {"1": 483627.9, "2": 504252.0, "3": 539028.0, "4": 707940.0, "5": 795708.0, "6": 1036035.0, "7": 1266288.0, "8": 981694.05, "9": 766935.0, "10": 1074847.5, "11": 1533870.0, "12": 2002104.0}, "Golden Resort": {"1": 4684410.0, "2": 2337720.0, "3": 1796760.0, "4": 2390850.0, "5": 1818150.0, "6": 2252160.0, "7": 4949646.0, "8": 2420278.5, "9": 2011005.0, "10": 2572147.5, "11": 3312000.0, "12": 5470492.5}, "Gramado": {"1": 1171353.6, "2": 620928.0, "3": 723763.2, "4": 969408.0, "5": 890419.2, "6": 1159200.0, "7": 1683820.8, "8": 1031184.0, "9": 900864.0, "10": 1104840.0, "11": 1487808.0, "12": 1973088.0}, "Higienópolis": {"1": 880152.0, "2": 757120.0, "3": 1191590.4, "4": 995904.0, "5": 1169022.4, "6": 1119768.0, "7": 1244786.4, "8": 1172730.0, "9": 1265472.0, "10": 1194492.0, "11": 1168128.0, "12": 1044576.0}, "LSH Lifestyle Hotel": {"1": 3997747.6, "2": 3981600.0, "3": 3068107.2, "4": 3010478.0, "5": 2023110.0, "6": 1969120.0, "7": 3454069.6, "8": 2681655.0, "9": 3678240.0, "10": 3285578.4, "11": 2886660.0, "12": 3604928.0}, "Moinhos": {"1": 990264.0, "2": 921782.4, "3": 1519155.0, "4": 1416492.0, "5": 1660942.8, "6": 1564200.0, "7": 1644165.6, "8": 1595880.0, "9": 1673694.0, "10": 1600176.6, "11": 1536480.0, "12": 1279977.6}, "Pedras Altas": {"1": 1947322.35, "2": 1091185.2, "3": 1323129.6, "4": 1494882.0, "5": 1709572.5, "6": 1903230.0, "7": 2973861.0, "8": 1788557.4, "9": 1457176.5, "10": 2004520.14, "11": 2801698.2, "12": 3289270.5}, "Premio": {"1": 714240.0, "2": 388080.0, "3": 453096.0, "4": 558144.0, "5": 562464.0, "6": 743040.0, "7": 967572.0, "8": 652860.0, "9": 598752.0, "10": 714240.0, "11": 965952.0, "12": 1055736.0}, "Rio Grande": {"1": 921816.0, "2": 846720.0, "3": 729120.0, "4": 748440.0, "5": 676258.8, "6": 576576.0, "7": 772867.2, "8": 568713.6, "9": 637560.0, "10": 634855.2, "11": 612360.0, "12": 758284.8}, "São Paulo": {"1": 1487767.5, "2": 1906301.6, "3": 2920432.5, "4": 2920788.0, "5": 2979943.2, "6": 2810346.0, "7": 2838825.0, "8": 3271554.0, "9": 3069495.0, "10": 3232680.0, "11": 3366000.0, "12": 2223490.5}, "Siena": {"1": 1874880.0, "2": 645120.0, "3": 857088.0, "4": 1128600.0, "5": 1251315.0, "6": 1684800.0, "7": 2306772.0, "8": 1441872.0, "9": 1077300.0, "10": 1591416.0, "11": 2586114.0, "12": 3056724.0}, "Toscana": {"1": 903960.0, "2": 462672.0, "3": 426200.4, "4": 826200.0, "5": 699062.4, "6": 976860.0, "7": 1631145.6, "8": 921369.6, "9": 816480.0, "10": 1031184.0, "11": 1477440.0, "12": 1935144.0}, "Viale": {"1": 797390.8, "2": 350784.0, "3": 474672.0, "4": 609696.0, "5": 578506.5, "6": 779868.0, "7": 1137999.15, "8": 706074.6, "9": 674424.0, "10": 757317.6, "11": 1148139.0, "12": 1208795.4}, "Villa Moura": {"1": 340181.6, "2": 450665.6, "3": 292578.0, "4": 279840.0, "5": 248248.0, "6": 266112.0, "7": 405108.0, "8": 341000.0, "9": 320760.0, "10": 458304.0, "11": 299376.0, "12": 320812.8}, "Vita": {"1": 1560664.0, "2": 658560.0, "3": 763840.0, "4": 1432200.0, "5": 1396395.0, "6": 2026080.0, "7": 2845738.0, "8": 1678495.0, "9": 1572480.0, "10": 2020270.0, "11": 2753940.0, "12": 3350046.0}, "Vivace": {"1": 1089068.75, "2": 616000.0, "3": 571562.5, "4": 693000.0, "5": 697500.0, "6": 828750.0, "7": 1449250.0, "8": 818593.75, "9": 780000.0, "10": 843781.25, "11": 1209375.0, "12": 1511250.0}}, "rec_r25": {"Barra": {"1": 7033047.28, "2": 7126946.33, "3": 5163140.97, "4": 5000230.47, "5": 4072792.75, "6": 3864195.1, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Bento": {"1": 837259.98, "2": 867035.82, "3": 889809.23, "4": 900895.48, "5": 1035588.22, "6": 1025323.61, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Borges": {"1": 1823175.93, "2": 745946.61, "3": 920912.0, "4": 1229562.0699999998, "5": 1402433.22, "6": 1771191.31, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Canela": {"1": 1482945.68, "2": 732141.94, "3": 825673.23, "4": 1051989.01, "5": 1166228.71, "6": 1412840.79, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Centro": {"1": 975311.45, "2": 360977.65, "3": 573723.78, "4": 814360.66, "5": 818256.69, "6": 948974.68, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Chateau Collection": {"1": 859881.54, "2": 538956.73, "3": 509023.85, "4": 699776.15, "5": 736411.79, "6": 752099.14, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Estação": {"1": 651105.3, "2": 664237.59, "3": 599687.04, "4": 696193.13, "5": 816941.61, "6": 735648.36, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Fratello": {"1": 617704.13, "2": 244660.29, "3": 345280.71, "4": 469654.32, "5": 478164.92, "6": 536102.83, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Garden": {"1": 619369.1, "2": 287321.78, "3": 464769.25, "4": 711485.79, "5": 796891.56, "6": 889934.31, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Golden Resort": {"1": 4490148.37, "2": 2385133.23, "3": 1938462.34, "4": 2240111.65, "5": 1788256.04, "6": 2183194.25, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Gramado": {"1": 1093769.2, "2": 434749.37, "3": 646930.44, "4": 769494.42, "5": 832085.87, "6": 1011123.2, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Higienópolis": {"1": 895923.42, "2": 782622.47, "3": 1210280.5, "4": 1019336.66, "5": 1217345.17, "6": 1160202.61, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "LSH Lifestyle Hotel": {"1": 4408180.6, "2": 4352710.66, "3": 3106638.05, "4": 3011477.96, "5": 2378316.32, "6": 2253844.28, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Moinhos": {"1": 1043763.0, "2": 938426.66, "3": 1609170.44, "4": 1385285.14, "5": 1645019.83, "6": 1520204.37, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Pedras Altas": {"1": 1755347.36, "2": 703118.17, "3": 929517.57, "4": 1343522.73, "5": 1631355.82, "6": 1947313.94, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Premio": {"1": 620981.16, "2": 218894.47, "3": 371437.68, "4": 525306.9, "5": 595172.77, "6": 624881.05, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Rio Grande": {"1": 884049.88, "2": 712100.11, "3": 620675.49, "4": 642971.86, "5": 663338.19, "6": 533726.6, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "São Paulo": {"1": 1791890.26, "2": 1871005.99, "3": 3151044.22, "4": 2665653.89, "5": 3288998.11, "6": 2816864.28, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Siena": {"1": 1634089.83, "2": 540407.89, "3": 836206.35, "4": 1149161.02, "5": 1120854.02, "6": 1534047.13, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Toscana": {"1": 1029899.04, "2": 437829.5, "3": 489480.61, "4": 826242.05, "5": 800492.67, "6": 988294.4, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Viale": {"1": 728504.98, "2": 202387.09, "3": 406786.1, "4": 524262.32, "5": 604527.45, "6": 747485.41, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Villa Moura": {"1": 406159.97, "2": 355610.67, "3": 307144.19, "4": 259604.1, "5": 273356.24, "6": 241054.11, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Vita": {"1": 1676010.36, "2": 600765.06, "3": 779858.08, "4": 1140907.82, "5": 1409012.91, "6": 1811980.6, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Vivace": {"1": 985598.21, "2": 318572.53, "3": 438903.05, "4": 727064.98, "5": 745415.26, "6": 908646.58, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}}, "dia_orc26": {"Barra": {"1": 7232.61, "2": 6447.84, "3": 6575.1, "4": 6544.8, "5": 6575.1, "6": 6363.0, "7": 7514.4, "8": 6575.1, "9": 6999.3, "10": 6856.89, "11": 6363.0, "12": 7044.75}, "Bento": {"1": 1950.52, "2": 2032.8, "3": 2325.62, "4": 2359.5, "5": 2925.78, "6": 2541.0, "7": 2925.78, "8": 2850.76, "9": 2359.5, "10": 2363.13, "11": 2541.0, "12": 2363.13}, "Borges": {"1": 2579.2, "2": 1182.72, "3": 1864.96, "4": 2073.6, "5": 2420.48, "6": 2380.8, "7": 2976.0, "8": 2460.16, "9": 2304.0, "10": 2460.16, "11": 2841.6, "12": 2856.96}, "Canela": {"1": 3365.05, "2": 2431.52, "3": 2692.04, "4": 3206.4, "5": 3106.2, "6": 3256.5, "7": 4400.45, "8": 3365.05, "9": 3256.5, "10": 3727.44, "11": 4258.5, "12": 4400.45}, "Centro": {"1": 1488.0, "2": 1039.36, "3": 1150.72, "4": 1344.0, "5": 1428.48, "6": 1536.0, "7": 1785.6, "8": 1547.52, "9": 1440.0, "10": 1488.0, "11": 1728.0, "12": 1785.6}, "Chateau Collection": {"1": 677.04, "2": 439.04, "3": 642.32, "4": 504.0, "5": 486.08, "6": 537.6, "7": 694.4, "8": 468.72, "9": 420.0, "10": 468.72, "11": 638.4, "12": 694.4}, "Estação": {"1": 1790.0, "2": 2310.0, "3": 1676.0, "4": 2079.0, "5": 3171.0, "6": 2772.0, "7": 3478.0, "8": 3529.0, "9": 2624.0, "10": 2404.0, "11": 2624.0, "12": 2302.0}, "Fratello": {"1": 1258.6, "2": 844.48, "3": 934.96, "4": 1078.8, "5": 1168.7, "6": 1252.8, "7": 1474.36, "8": 1258.6, "9": 1183.2, "10": 1366.48, "11": 1444.2, "12": 1528.3}, "Garden": {"1": 727.26, "2": 869.4, "3": 962.55, "4": 1242.0, "5": 1326.18, "6": 1449.0, "7": 1582.86, "8": 1433.13, "9": 1179.9, "10": 1433.13, "11": 1614.6, "12": 1668.42}, "Golden Resort": {"1": 6417.0, "2": 3864.0, "3": 3208.5, "4": 3105.0, "5": 2673.75, "6": 3312.0, "7": 5561.4, "8": 3315.45, "9": 3001.5, "10": 3957.15, "11": 4140.0, "12": 5882.25}, "Gramado": {"1": 2440.32, "2": 1612.8, "3": 1904.64, "4": 1958.4, "5": 2023.68, "6": 2016.0, "7": 2440.32, "8": 2083.2, "9": 1958.4, "10": 2232.0, "11": 2361.6, "12": 2529.6}, "Higienópolis": {"1": 2095.6, "2": 1892.8, "3": 2482.48, "4": 2371.2, "5": 2385.76, "6": 2308.8, "7": 2514.72, "8": 2418.0, "9": 2433.6, "10": 2514.72, "11": 2433.6, "12": 2321.28}, "LSH Lifestyle Hotel": {"1": 3771.46, "2": 3318.0, "3": 3526.56, "4": 4105.79, "5": 3428.6, "6": 3175.8, "7": 4016.36, "8": 3673.5, "9": 3792.0, "10": 3820.44, "11": 3318.0, "12": 3918.4}, "Moinhos": {"1": 2250.6, "2": 2143.68, "3": 3069.0, "4": 2890.8, "5": 3355.44, "6": 3128.4, "7": 3355.44, "8": 3191.76, "9": 3128.4, "10": 3232.68, "11": 3168.0, "12": 2782.56}, "Pedras Altas": {"1": 4187.79, "2": 2537.64, "3": 3392.64, "4": 3180.6, "5": 3975.75, "6": 3591.0, "7": 4505.85, "8": 3710.7, "9": 3334.5, "10": 3869.73, "11": 4257.9, "12": 4505.85}, "Premio": {"1": 1785.6, "2": 1108.8, "3": 1294.56, "4": 1468.8, "5": 1562.4, "6": 1728.0, "7": 1897.2, "8": 1674.0, "9": 1555.2, "10": 1785.6, "11": 1857.6, "12": 1919.52}, "Rio Grande": {"1": 3124.8, "2": 2822.4, "3": 2604.0, "4": 2721.6, "5": 2551.92, "6": 2217.6, "7": 2760.24, "8": 2187.36, "9": 2318.4, "10": 2395.68, "11": 2268.0, "12": 2708.16}, "São Paulo": {"1": 2204.1, "2": 2742.88, "3": 3673.5, "4": 3697.2, "5": 3820.44, "6": 3649.8, "7": 3836.25, "8": 4194.3, "9": 3861.0, "10": 4092.0, "11": 3960.0, "12": 3222.45}, "Siena": {"1": 3906.0, "2": 2016.0, "3": 2678.4, "4": 2970.0, "5": 3627.0, "6": 3510.0, "7": 4352.4, "8": 3794.4, "9": 3078.0, "10": 3459.6, "11": 4482.0, "12": 4631.4}, "Toscana": {"1": 2008.8, "2": 1360.8, "3": 1272.24, "4": 1944.0, "5": 1941.84, "6": 2170.8, "7": 2812.32, "8": 2142.72, "9": 1944.0, "10": 2343.6, "11": 2592.0, "12": 2845.8}, "Viale": {"1": 2103.66, "2": 1096.2, "3": 1483.35, "4": 1670.4, "5": 1753.05, "6": 1879.2, "7": 2346.39, "8": 1833.96, "9": 1774.8, "10": 1941.84, "11": 2166.3, "12": 2238.51}, "Villa Moura": {"1": 1173.04, "2": 1453.76, "3": 1063.92, "4": 1056.0, "5": 954.8, "6": 1108.8, "7": 1500.4, "8": 1364.0, "9": 1188.0, "10": 1636.8, "11": 1108.8, "12": 1145.76}, "Vita": {"1": 2690.8, "2": 1372.0, "3": 1736.0, "4": 2604.0, "5": 2821.0, "6": 3024.0, "7": 3602.2, "8": 2821.0, "9": 2688.0, "10": 3038.0, "11": 3486.0, "12": 3602.2}, "Vivace": {"1": 2983.75, "2": 1925.0, "3": 1937.5, "4": 2100.0, "5": 2325.0, "6": 2437.5, "7": 3293.75, "8": 2518.75, "9": 2437.5, "10": 2518.75, "11": 2812.5, "12": 2906.25}}, "dia_r25": {"Barra": {"1": 8061.0, "2": 7039.0, "3": 7559.0, "4": 7066.0, "5": 6631.0, "6": 6208.0, "7": 7629.0, "8": 6798.0, "9": 7081.0, "10": 7207.0, "11": 6614.0, "12": 7163.0}, "Bento": {"1": 1769.0, "2": 1984.0, "3": 2503.0, "4": 2237.0, "5": 2842.0, "6": 2423.0, "7": 2908.0, "8": 2911.0, "9": 2359.0, "10": 2325.0, "11": 2565.0, "12": 2333.0}, "Borges": {"1": 2942.0, "2": 1300.0, "3": 2194.0, "4": 2318.0, "5": 2460.0, "6": 2405.0, "7": 2967.0, "8": 2325.0, "9": 2390.0, "10": 2541.0, "11": 2526.0, "12": 2954.0}, "Canela": {"1": 4218.0, "2": 2255.0, "3": 2944.0, "4": 2826.0, "5": 2768.0, "6": 3199.0, "7": 4713.0, "8": 3406.0, "9": 2978.0, "10": 3424.0, "11": 4023.0, "12": 4140.0}, "Centro": {"1": 1615.0, "2": 872.0, "3": 1307.0, "4": 1461.0, "5": 1554.0, "6": 1600.0, "7": 1822.0, "8": 1533.0, "9": 1393.0, "10": 1476.0, "11": 1716.0, "12": 1726.0}, "Chateau Collection": {"1": 799.0, "2": 506.0, "3": 717.0, "4": 658.0, "5": 654.0, "6": 574.0, "7": 729.0, "8": 454.0, "9": 398.0, "10": 530.0, "11": 423.0, "12": 394.0}, "Estação": {"1": 1611.0, "2": 2306.0, "3": 2332.0, "4": 1915.0, "5": 2983.0, "6": 2703.0, "7": 3396.0, "8": 3415.0, "9": 2549.0, "10": 2339.0, "11": 2670.0, "12": 2323.0}, "Fratello": {"1": 1297.0, "2": 522.0, "3": 951.0, "4": 963.0, "5": 1132.0, "6": 1161.0, "7": 1443.0, "8": 1084.0, "9": 967.0, "10": 1235.0, "11": 1409.0, "12": 1530.0}, "Garden": {"1": 0.0, "2": 0.0, "3": 0.0, "4": 0.0, "5": 0.0, "6": 19.0, "7": 921.0, "8": 862.0, "9": 946.0, "10": 1089.0, "11": 1474.0, "12": 1243.0}, "Golden Resort": {"1": 7406.0, "2": 4181.0, "3": 4482.0, "4": 3301.0, "5": 2641.0, "6": 2833.0, "7": 5317.0, "8": 2577.0, "9": 3036.0, "10": 4028.0, "11": 4087.0, "12": 4735.0}, "Gramado": {"1": 2533.0, "2": 1418.0, "3": 1972.0, "4": 1939.0, "5": 2074.0, "6": 2039.0, "7": 2508.0, "8": 2028.0, "9": 1877.0, "10": 2117.0, "11": 2289.0, "12": 2322.0}, "Higienópolis": {"1": 2125.0, "2": 1938.0, "3": 2420.0, "4": 2479.0, "5": 2341.0, "6": 2188.0, "7": 2404.0, "8": 2400.0, "9": 2447.0, "10": 2559.0, "11": 2435.0, "12": 2335.0}, "LSH Lifestyle Hotel": {"1": 3979.0, "2": 3569.0, "3": 3727.0, "4": 3605.0, "5": 3053.0, "6": 3191.0, "7": 4193.0, "8": 3824.0, "9": 3762.0, "10": 3999.0, "11": 3400.0, "12": 3957.0}, "Moinhos": {"1": 2128.0, "2": 2114.0, "3": 3009.0, "4": 2974.0, "5": 3404.0, "6": 3111.0, "7": 3434.0, "8": 3197.0, "9": 3113.0, "10": 3280.0, "11": 3252.0, "12": 2748.0}, "Pedras Altas": {"1": 4211.0, "2": 2288.0, "3": 3239.0, "4": 3612.0, "5": 4085.0, "6": 3898.0, "7": 4525.0, "8": 3867.0, "9": 3367.0, "10": 3978.0, "11": 4377.0, "12": 4517.0}, "Premio": {"1": 1832.0, "2": 989.0, "3": 1527.0, "4": 1582.0, "5": 1769.0, "6": 1738.0, "7": 1965.0, "8": 1595.0, "9": 1556.0, "10": 1725.0, "11": 1964.0, "12": 2024.0}, "Rio Grande": {"1": 3151.0, "2": 2849.0, "3": 2642.0, "4": 2705.0, "5": 2528.0, "6": 2185.0, "7": 2757.0, "8": 2209.0, "9": 2252.0, "10": 2521.0, "11": 2369.0, "12": 2647.0}, "São Paulo": {"1": 2147.0, "2": 2705.0, "3": 3422.0, "4": 3618.0, "5": 3793.0, "6": 3536.0, "7": 3585.0, "8": 4088.0, "9": 3670.0, "10": 3998.0, "11": 3906.0, "12": 3118.0}, "Siena": {"1": 4160.0, "2": 1277.0, "3": 2752.0, "4": 3025.0, "5": 3546.0, "6": 3644.0, "7": 4860.0, "8": 3112.0, "9": 3097.0, "10": 3652.0, "11": 4330.0, "12": 4206.0}, "Toscana": {"1": 2586.0, "2": 772.0, "3": 1384.0, "4": 1679.0, "5": 1897.0, "6": 2182.0, "7": 2798.0, "8": 2130.0, "9": 1891.0, "10": 2149.0, "11": 2571.0, "12": 2823.0}, "Viale": {"1": 1961.0, "2": 516.0, "3": 1435.0, "4": 1581.0, "5": 1743.0, "6": 1820.0, "7": 2362.0, "8": 1662.0, "9": 1668.0, "10": 1753.0, "11": 2333.0, "12": 2268.0}, "Villa Moura": {"1": 1183.0, "2": 1450.0, "3": 1054.0, "4": 1115.0, "5": 998.0, "6": 1151.0, "7": 1532.0, "8": 1373.0, "9": 1203.0, "10": 1604.0, "11": 1092.0, "12": 1161.0}, "Vita": {"1": 2753.0, "2": 687.0, "3": 1619.0, "4": 2371.0, "5": 2829.0, "6": 2833.0, "7": 3744.0, "8": 2736.0, "9": 2701.0, "10": 3100.0, "11": 3576.0, "12": 3353.0}, "Vivace": {"1": 2879.0, "2": 1313.0, "3": 2134.0, "4": 2051.0, "5": 2180.0, "6": 2485.0, "7": 3476.0, "8": 2415.0, "9": 1935.0, "10": 2808.0, "11": 3219.0, "12": 3247.0}}, "dia_r26": {"Barra": {"1": 7813.0, "2": 7259.0, "3": 7887.0, "4": 7664.0, "5": 7176.0, "6": 6668.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Bento": {"1": 2305.0, "2": 2212.0, "3": 2468.0, "4": 2428.0, "5": 2574.0, "6": 2505.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Borges": {"1": 2579.0, "2": 1247.0, "3": 1779.0, "4": 1830.0, "5": 2400.0, "6": 3036.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Canela": {"1": 3239.0, "2": 1905.0, "3": 2462.0, "4": 2523.0, "5": 3292.0, "6": 3530.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Centro": {"1": 1492.0, "2": 697.0, "3": 1192.0, "4": 1360.0, "5": 1511.0, "6": 1516.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Chateau Collection": {"1": 637.0, "2": 444.0, "3": 509.0, "4": 573.0, "5": 725.0, "6": 1246.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Estação": {"1": 2186.0, "2": 2050.0, "3": 1694.0, "4": 1940.0, "5": 2138.0, "6": 1962.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Fratello": {"1": 1162.0, "2": 583.0, "3": 978.0, "4": 1048.0, "5": 1214.0, "6": 1150.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Garden": {"1": 787.0, "2": 473.0, "3": 947.0, "4": 1122.0, "5": 1428.0, "6": 1374.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Golden Resort": {"1": 5686.0, "2": 3105.0, "3": 3338.0, "4": 3190.0, "5": 2935.0, "6": 5337.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Gramado": {"1": 2075.0, "2": 1150.0, "3": 1854.0, "4": 1814.0, "5": 2169.0, "6": 2339.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Higienópolis": {"1": 2067.0, "2": 1953.0, "3": 2661.0, "4": 2284.0, "5": 2502.0, "6": 2441.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "LSH Lifestyle Hotel": {"1": 4131.0, "2": 3821.0, "3": 4295.0, "4": 4106.0, "5": 3828.0, "6": 3660.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Moinhos": {"1": 2464.0, "2": 2323.0, "3": 3343.0, "4": 3072.0, "5": 3271.0, "6": 3120.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Pedras Altas": {"1": 3595.0, "2": 1693.0, "3": 2580.0, "4": 2972.0, "5": 3956.0, "6": 4006.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Premio": {"1": 1486.0, "2": 690.0, "3": 1192.0, "4": 1534.0, "5": 1876.0, "6": 1866.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Rio Grande": {"1": 3036.0, "2": 2472.0, "3": 2409.0, "4": 2612.0, "5": 2671.0, "6": 2113.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "São Paulo": {"1": 2723.0, "2": 2775.0, "3": 4019.0, "4": 3512.0, "5": 4151.0, "6": 3986.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Siena": {"1": 3456.0, "2": 1409.0, "3": 2683.0, "4": 2822.0, "5": 3178.0, "6": 3923.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Toscana": {"1": 2137.0, "2": 1193.0, "3": 1500.0, "4": 1906.0, "5": 2116.0, "6": 2257.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Viale": {"1": 1674.0, "2": 605.0, "3": 1460.0, "4": 1559.0, "5": 2077.0, "6": 2245.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Villa Moura": {"1": 1467.0, "2": 1330.0, "3": 1241.0, "4": 1080.0, "5": 1126.0, "6": 973.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Vita": {"1": 2469.0, "2": 1179.0, "3": 1842.0, "4": 1894.0, "5": 2897.0, "6": 2923.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}, "Vivace": {"1": 2581.0, "2": 1040.0, "3": 1806.0, "4": 2426.0, "5": 2960.0, "6": 3340.0, "7": null, "8": null, "9": null, "10": null, "11": null, "12": null}}};
+
+// ── GOOGLE SHEETS LOADER ──
+const DB_FALLBACK = DB; // alias para fallback
+const SHEET_ID = '1brASAEnHoeIeVG4t0cN1GA3v_U1Jnz_MqOP2GvcA8ao';
+const SHEET_ABAS = {
+  hoteis:    'Hotéis',
+  rec_r25:   'Hospedagem Realizada 2025',
+  rec_orc26: 'Hospedagem Orçada 2026',
+  rec_r26:   'Hospedagem Realizada 2026',
+  dia_orc26: 'Diárias Orçadas 2026',
+  dia_r25:   'Diárias Realizadas 2025',
+  dia_r26:   'Diárias Realizadas 2026',
+};
+
+function showLoadingBanner(msg, type='loading'){
+  let b=document.getElementById('sheetsBanner');
+  if(!b){
+    b=document.createElement('div'); b.id='sheetsBanner';
+    b.style.cssText='position:fixed;top:52px;left:0;right:0;z-index:500;padding:10px 24px;font-family:Inter,sans-serif;font-size:12px;font-weight:700;display:flex;align-items:center;gap:10px;transition:all .3s';
+    document.body.appendChild(b);
+  }
+  if(type==='loading'){ b.style.background='#2a606a'; b.style.color='#fff'; b.innerHTML='⟳ '+msg; }
+  else if(type==='ok'){ b.style.background='#1a6b50'; b.style.color='#fff'; b.innerHTML='✓ '+msg; setTimeout(()=>b.remove(),3000); }
+  else if(type==='warn'){ b.style.background='#f0c040'; b.style.color='#0a2d23'; b.innerHTML='⚠ '+msg; }
+}
+
+function parseCSV(text){
+  const lines=text.split('\n').filter(l=>l.trim());
+  return lines.map(line=>{
+    const cols=[]; let cur='', inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ inQ=!inQ; }
+      else if(ch===','&&!inQ){ cols.push(cur.trim()); cur=''; }
+      else cur+=ch;
+    }
+    cols.push(cur.trim()); return cols;
+  });
+}
+
+function csvToDataMap(rows){
+  const map={};
+  for(let i=1;i<rows.length;i++){
+    const row=rows[i]; if(!row[0]) continue;
+    const nome=row[0].replace(/^"|"$/g,'').trim();
+    const vals={};
+    for(let m=1;m<=12;m++){
+      const raw=(row[m]||'').replace(/[^0-9.,-]/g,'').replace(',','.');
+      vals[m]=raw===''||raw==='-'?null:parseFloat(raw)||null;
+    }
+    map[nome]=vals;
+  }
+  return map;
+}
+
+function buildDiasMes(){
+  return {"1":31,"2":28,"3":31,"4":30,"5":31,"6":30,"7":31,"8":31,"9":30,"10":31,"11":30,"12":31};
+}
+
+function parseHoteis(rows){
+  const hotels=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]; if(!r[1]) continue;
+    const h={
+      nome: r[1].replace(/^"|"$/g,'').trim(),
+      pool: parseInt(r[2])||0,
+      praca: (r[3]||'').replace(/^"|"$/g,'').trim(),
+      modelo: (r[4]||'').replace(/^"|"$/g,'').trim(),
+      regional: (r[5]||'').replace(/^"|"$/g,'').trim(),
+      empresa: (r[6]||'').replace(/^"|"$/g,'').trim(),
+    };
+    if(h.nome==='Estação') h.pool_mensal={"1":165,"2":165,"3":115,"4":115,"5":115,"6":115,"7":115,"8":115,"9":115,"10":115,"11":115,"12":115};
+    if(h.nome==='Chateau Collection') h.pool=30;
+    if(h.nome==='Golden Resort') h.pool=220;
+    hotels.push(h);
+  }
+  return hotels;
+}
+
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztB1b4BP2dtJJdDDfR3_dGruscO1gQ-6Mtfdhn7-dgiQWsO-yRkcb-c_kBXahfCm0jYQ/exec';
+
+// JSONP: único método que bypassa CORS com Google Apps Script
+function fetchJSONP(url){
+  return new Promise((resolve, reject) => {
+    const cbName = '_cb_' + Date.now();
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      cleanup(); reject(new Error('Timeout'));
+    }, 15000);
+    function cleanup(){ 
+      delete window[cbName]; 
+      document.head.removeChild(script); 
+      clearTimeout(timer); 
+    }
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error('Script error')); };
+    script.src = url + '&callback=' + cbName;
+    document.head.appendChild(script);
+  });
+}
+
+async function fetchCSVStrategy(aba){
+  // Tenta fetch direto primeiro (funciona se CORS ok)
+  try{
+    const url = `${APPS_SCRIPT_URL}?sheet=${encodeURIComponent(aba)}`;
+    const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
+    if(r.ok){
+      const text = await r.text();
+      if(text.length > 5 && !text.includes('<!DOCTYPE')) return text;
+    }
+  } catch(e){ console.log('fetch direto falhou, tentando JSONP...'); }
+  
+  // JSONP como fallback
+  try{
+    const url = `${APPS_SCRIPT_URL}?sheet=${encodeURIComponent(aba)}&format=jsonp`;
+    const data = await fetchJSONP(url);
+    if(data && data.csv) return data.csv;
+    if(typeof data === 'string') return data;
+    throw new Error('Formato inválido');
+  } catch(e){
+    throw new Error(`Erro ao carregar "${aba}": ${e.message}`);
+  }
+}
+
+async function loadFromSheets(){
+  DB = DB_FALLBACK; // garante que nunca fica null
+  showLoadingBanner('Conectando ao Google Sheets...');
+  try{
+    showLoadingBanner('Carregando Hotéis (1/7)...');
+    const hoteisCsv=await fetchCSVStrategy(SHEET_ABAS.hoteis);
+    showLoadingBanner('Carregando Hospedagem 2025 (2/7)...');
+    const rec25Csv=await fetchCSVStrategy(SHEET_ABAS.rec_r25);
+    showLoadingBanner('Carregando Hospedagem Orçada (3/7)...');
+    const recOrc26Csv=await fetchCSVStrategy(SHEET_ABAS.rec_orc26);
+    showLoadingBanner('Carregando Hospedagem Real. 2026 (4/7)...');
+    const rec26Csv=await fetchCSVStrategy(SHEET_ABAS.rec_r26);
+    showLoadingBanner('Carregando Diárias Orçadas (5/7)...');
+    const diaOrc26Csv=await fetchCSVStrategy(SHEET_ABAS.dia_orc26);
+    showLoadingBanner('Carregando Diárias 2025 (6/7)...');
+    const dia25Csv=await fetchCSVStrategy(SHEET_ABAS.dia_r25);
+    showLoadingBanner('Carregando Diárias Real. 2026 (7/7)...');
+    const dia26Csv=await fetchCSVStrategy(SHEET_ABAS.dia_r26);
+    DB={
+      hotels:    parseHoteis(parseCSV(hoteisCsv)),
+      dias_mes:  buildDiasMes(),
+      rec_r25:   csvToDataMap(parseCSV(rec25Csv)),
+      rec_orc26: csvToDataMap(parseCSV(recOrc26Csv)),
+      rec_r26:   csvToDataMap(parseCSV(rec26Csv)),
+      dia_orc26: csvToDataMap(parseCSV(diaOrc26Csv)),
+      dia_r25:   csvToDataMap(parseCSV(dia25Csv)),
+      dia_r26:   csvToDataMap(parseCSV(dia26Csv)),
+    };
+    const now=new Date();
+    showLoadingBanner(`Dados atualizados — ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, 'ok');
+    return true;
+  } catch(err){
+    console.error('[Sheets] Erro:', err.message);
+    showLoadingBanner('Usando dados locais. Atualize a planilha e tente novamente.', 'warn');
+    DB=DB_FALLBACK;
+    return false;
+  }
+}
+
+function addRefreshBtn(){
+  const btn=document.createElement('button');
+  btn.id='refreshBtn';
+  btn.innerHTML='⟳ Atualizar';
+  btn.style.cssText='position:fixed;bottom:16px;right:16px;background:var(--vc);border:none;color:#fff;padding:8px 14px;border-radius:8px;font-family:Inter,sans-serif;font-size:11px;font-weight:700;cursor:pointer;z-index:100;box-shadow:0 2px 8px rgba(10,45,35,.2)';
+  btn.onclick=async()=>{
+    btn.innerHTML='⟳ Atualizando...'; btn.disabled=true;
+    await loadFromSheets();
+    initDrops(); initResumoSelect(); render();
+    btn.innerHTML='⟳ Atualizar'; btn.disabled=false;
+  };
+  document.body.appendChild(btn);
+}
+
+const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const MESES3 = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const DIAS = () => DB.dias_mes;
+const S = {mes:5,emp:new Set(),mod:new Set(),praca:new Set(),reg:new Set(),_empTodos:false,anosAnt:new Set([2025])};
+const COL_ORC='#12443f', COL_R26='#b4d4df', COL_R25='#cfccbf';
+
+// ── PERIOD CHANGE ──
+
+
+
+// ── DROPDOWNS ──
+function buildDrop(id,items,key,lId,bId){
+  const d=document.getElementById(id); d.innerHTML='';
+  // Opção "Todos" só para empreendimentos
+  if(id==='dEmp'){
+    const divT=document.createElement('div'); divT.className='mopt';
+    divT.style.cssText='border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;';
+    divT.addEventListener('click',e=>e.stopPropagation());
+    const chkT=document.createElement('input'); chkT.type='checkbox'; chkT.id='chkTodos';
+    chkT.checked=S._empTodos;
+    const lblT=document.createElement('label'); lblT.textContent='Todos os empreendimentos';
+    lblT.style.cssText='font-weight:700;color:var(--vm)';
+    const onTodosChange=()=>{
+      S._empTodos=chkT.checked;
+      if(chkT.checked){
+        // Desmarca individuais
+        S[key].clear();
+        d.querySelectorAll('input[type=checkbox]:not(#chkTodos)').forEach(x=>x.checked=false);
+      }
+      syncLbl(key,lId,bId); markDirty();
+    };
+    chkT.addEventListener('change', onTodosChange);
+    lblT.addEventListener('click',e=>{ e.preventDefault(); chkT.checked=!chkT.checked; onTodosChange(); });
+    divT.append(chkT,lblT); d.appendChild(divT);
+  }
+  items.forEach(item=>{
+    const div=document.createElement('div'); div.className='mopt';
+    div.addEventListener('click',e=>e.stopPropagation());
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.value=item; chk.checked=S[key].has(item);
+    chk.addEventListener('change',()=>{
+      if(chk.checked){
+        S[key].add(item);
+        // Desativa "Todos" ao selecionar individual
+        S._empTodos=false;
+        const ct=document.getElementById('chkTodos'); if(ct) ct.checked=false;
+      } else {
+        S[key].delete(item);
+      }
+      syncLbl(key,lId,bId); markDirty();
+    });
+    const lbl=document.createElement('label'); lbl.textContent=item;
+    lbl.addEventListener('click',e=>{ e.preventDefault(); chk.checked=!chk.checked; chk.dispatchEvent(new Event('change')); });
+    div.append(chk,lbl); d.appendChild(div);
+  });
+}
+function syncLbl(key,lId,bId){
+  const s=S[key],l=document.getElementById(lId),b=document.getElementById(bId);
+  if(lId==='lEmp'){
+    if(S._empTodos){ l.textContent='Todos'; b.style.display='none'; }
+    else if(s.size===0){ l.textContent='Selecione...'; l.style.color='#b03030'; b.style.display='none'; }
+    else{ l.style.color=''; l.textContent=s.size===1?[...s][0].substring(0,15):s.size+' sel.'; b.textContent=s.size; b.style.display='inline'; }
+    return;
+  }
+  if(s.size===0){l.textContent='Todos';b.style.display='none';}
+  else{l.textContent=s.size===1?[...s][0].substring(0,15):s.size+' sel.';b.textContent=s.size;b.style.display='inline';}
+}
+function toggleDrop(e,id){
+  e.stopPropagation();
+  const d=document.getElementById(id),o=d.classList.contains('open');
+  document.querySelectorAll('.mdrop').forEach(x=>{ if(x.id!==id) x.classList.remove('open'); });
+  d.classList.toggle('open',!o);
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.mwrap'))document.querySelectorAll('.mdrop').forEach(x=>x.classList.remove('open')); });
+function markDirty(){
+  const btn=document.getElementById('searchBtn');
+  btn.classList.add('dirty');
+  btn.textContent='🔍 Pesquisar';
+}
+function buildAnoAntDrop(){
+  const d=document.getElementById('dAnoAnt'); if(!d) return;
+  d.innerHTML='';
+  // Opção "Nenhum" no topo
+  const divN=document.createElement('div'); divN.className='mopt';
+  divN.style.cssText='border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:8px;';
+  divN.addEventListener('click',e=>e.stopPropagation());
+  const chkN=document.createElement('input'); chkN.type='checkbox'; chkN.id='chkAnoNenhum';
+  chkN.checked=S.anosAnt.size===0;
+  const lblN=document.createElement('label'); lblN.textContent='Nenhum (só 2026)';
+  lblN.style.cssText='font-weight:700;color:var(--red)';
+  const onNenhumChange=()=>{
+    if(chkN.checked){ S.anosAnt.clear(); d.querySelectorAll('input:not(#chkAnoNenhum)').forEach(x=>x.checked=false); }
+    syncAnoAntLabel(); markDirty();
+  };
+  chkN.addEventListener('change',onNenhumChange);
+  lblN.addEventListener('click',e=>{ e.preventDefault(); chkN.checked=!chkN.checked; onNenhumChange(); });
+  divN.append(chkN,lblN); d.appendChild(divN);
+  // Anos disponíveis
+  [2025].forEach(ano=>{
+    const div=document.createElement('div'); div.className='mopt';
+    div.addEventListener('click',e=>e.stopPropagation());
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.value=ano; chk.checked=S.anosAnt.has(ano);
+    chk.addEventListener('change',()=>{
+      if(chk.checked){ S.anosAnt.add(ano); chkN.checked=false; }
+      else{ S.anosAnt.delete(ano); if(S.anosAnt.size===0) chkN.checked=true; }
+      syncAnoAntLabel(); markDirty();
+    });
+    const lbl=document.createElement('label'); lbl.textContent=String(ano);
+    lbl.addEventListener('click',e=>{ e.preventDefault(); chk.checked=!chk.checked; chk.dispatchEvent(new Event('change')); });
+    div.append(chk,lbl); d.appendChild(div);
+  });
+}
+function syncAnoAntLabel(){
+  const l=document.getElementById('lAnoAnt'), b=document.getElementById('bAnoAnt');
+  if(S.anosAnt.size===0){ l.textContent='Nenhum'; l.style.color='var(--red)'; b.style.display='none'; }
+  else{ l.style.color=''; l.textContent=[...S.anosAnt].sort().join(', '); b.style.display='none'; }
+}
+
+
+function buildAnoAntDrop(){
+  const d=document.getElementById('dAnoAnt'); if(!d) return;
+  d.innerHTML='';
+  // Opção Nenhum
+  const divN=document.createElement('div'); divN.className='mopt';
+  divN.addEventListener('click',e=>e.stopPropagation());
+  const chkN=document.createElement('input'); chkN.type='checkbox'; chkN.id='chkAnoNenhum';
+  chkN.checked=S.anosAnt.size===0;
+  const lblN=document.createElement('label'); lblN.textContent='Nenhum (só 2026)';
+  lblN.style.cssText='font-weight:700;color:var(--red)';
+  const onNenhumChange=()=>{
+    if(chkN.checked){ S.anosAnt.clear(); d.querySelectorAll('input:not(#chkAnoNenhum)').forEach(x=>x.checked=false); }
+    syncAnoAntLabel(); markDirty();
+  };
+  chkN.addEventListener('change',onNenhumChange);
+  lblN.addEventListener('click',e=>{ e.preventDefault(); chkN.checked=!chkN.checked; onNenhumChange(); });
+  divN.append(chkN,lblN); d.appendChild(divN);
+  // 2025
+  [2025].forEach(ano=>{
+    const div=document.createElement('div'); div.className='mopt';
+    div.addEventListener('click',e=>e.stopPropagation());
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.value=ano; chk.checked=S.anosAnt.has(ano);
+    chk.addEventListener('change',()=>{
+      if(chk.checked){ S.anosAnt.add(ano); chkN.checked=false; }
+      else{ S.anosAnt.delete(ano); if(S.anosAnt.size===0) chkN.checked=true; }
+      syncAnoAntLabel(); markDirty();
+    });
+    const lbl=document.createElement('label'); lbl.textContent=String(ano);
+    lbl.addEventListener('click',e=>{ e.preventDefault(); chk.checked=!chk.checked; chk.dispatchEvent(new Event('change')); });
+    div.append(chk,lbl); d.appendChild(div);
+  });
+}
+function syncAnoAntLabel(){
+  const l=document.getElementById('lAnoAnt'), b=document.getElementById('bAnoAnt');
+  if(S.anosAnt.size===0){ l.textContent='Nenhum'; l.style.color='var(--red)'; }
+  else{ l.style.color=''; l.textContent=[...S.anosAnt].sort().join(', '); }
+}
+
+function markDirty(){
+  const btn=document.getElementById('searchBtn');
+  if(btn){btn.classList.add('dirty');btn.textContent='🔍 Pesquisar';}
+}
+
+function initDrops(){
+  buildAnoAntDrop(); syncAnoAntLabel();
+  const H=DB.hotels;
+  buildDrop('dEmp',H.map(h=>h.nome),'emp','lEmp','bEmp');
+  buildDrop('dMod',[...new Set(H.map(h=>h.modelo))],'mod','lMod','bMod');
+  buildDrop('dPraca',[...new Set(H.map(h=>h.praca))].sort(),'praca','lPraca','bPraca');
+  buildDrop('dReg',[...new Set(H.map(h=>h.regional))].sort(),'reg','lReg','bReg');
+}
+function resetAll(){
+  S.anosAnt=new Set([2025]); S._empTodos=false; ['emp','mod','praca','reg'].forEach(k=>S[k].clear());
+  [['emp','lEmp','bEmp'],['mod','lMod','bMod'],
+   ['praca','lPraca','bPraca'],['reg','lReg','bReg']].forEach(([k,l,b])=>syncLbl(k,l,b));
+  initDrops(); buildAnoAntDrop(); syncAnoAntLabel();
+  document.getElementById('selMes').value=5;
+  S.mes=5;
+  document.getElementById('searchBtn').classList.remove('dirty');
+  document.getElementById('searchBtn').textContent='🔍 Pesquisar';
+  render();
+}
+
+// ── FILTER ──
+function fidxs(){
+  // Dashboard zerado apenas quando NENHUM critério de seleção está ativo
+  const temEmp   = S._empTodos || S.emp.size > 0;
+  const temPraca = S.praca.size > 0;
+  const temReg   = S.reg.size > 0;
+  const temMod   = S.mod.size > 0;
+
+  // Se nada selecionado = dash zerado
+  if(!temEmp && !temPraca && !temReg && !temMod) return [];
+
+  return DB.hotels.map((h,i)=>({h,i})).filter(({h})=>{
+    // Filtro de empreendimento: se "Todos" ou individual selecionado, aplica; senão ignora
+    if(temEmp){
+      if(!S._empTodos && !S.emp.has(h.nome)) return false;
+    }
+    if(temMod   && !S.mod.has(h.modelo))   return false;
+    if(temPraca && !S.praca.has(h.praca))  return false;
+    if(temReg   && !S.reg.has(h.regional)) return false;
+    return true;
+  }).map(({i})=>i);
+}
+
+// ── CALC — com intervalo livre ini..fim ──
+// mode: 'periodo' = soma do intervalo | 'mes' = só 1 mês
+function calcRange(idxs, ini, fim, mesesOverride){
+  // mesesOverride: lista exata de meses (multi-seleção); senão usa ini..fim contíguo
+  const meses = mesesOverride ? [...mesesOverride].sort((a,b)=>a-b) : Array.from({length: fim-ini+1}, (_,i)=>ini+i);
+  let ro=0,r6=0,r5=0,do_=0,d6=0,d5=0,ao=0,a6=0,a5=0;
+  for(const i of idxs){
+    const h=DB.hotels[i],pool=h.pool;
+    for(const m of meses){
+      const sm=String(m),dias=DIAS()[sm];
+      // Usar pool correto por ano
+      const pm26 = h.pool_mensal_2026 || h.pool_mensal;
+      const pm25 = h.pool_mensal_2025 || h.pool_mensal;
+      const poolM26 = pm26 ? (pm26[sm] || pool) : pool;
+      const poolM25 = pm25 ? (pm25[sm] || pool) : pool;
+      const poolM = poolM26; // pool base para orçado e real 2026
+      ro+=DB.rec_orc26[h.nome]?.[sm]||0; r5+=DB.rec_r25[h.nome]?.[sm]||0;
+      do_+=DB.dia_orc26[h.nome]?.[sm]||0; d5+=DB.dia_r25[h.nome]?.[sm]||0;
+      ao+=poolM26*dias; a5+=poolM25*dias;  // pool correto por ano
+      const rv=DB.rec_r26[h.nome]?.[sm],dv=DB.dia_r26[h.nome]?.[sm];
+      if(rv!=null){r6+=rv;d6+=(dv!=null?dv:0);a6+=poolM26*dias;}
+    }
+  }
+  const oO=ao>0?do_/ao:null,o6=a6>0?d6/a6:null,o5=a5>0?d5/a5:null;
+  const mO=do_>0?ro/do_:null,m6=d6>0?r6/d6:null,m5=d5>0?r5/d5:null;
+  const rO=(mO!=null&&oO!=null)?mO*oO:null,r6v=(m6!=null&&o6!=null)?m6*o6:null,r5v=(m5!=null&&o5!=null)?m5*o5:null;
+  return{occ:[oO,o6,o5],dia:[do_,d6,d5],dm:[mO,m6,m5],rev:[rO,r6v,r5v],rec:[ro,r6,r5]};
+}
+function calcMes(idxs,m){ return calcRange(idxs,m,m); }
+
+// ── FORMAT ──
+const fp=v=>v==null?'—':(v*100).toFixed(1)+'%';
+const fn=v=>v==null?'—':Math.round(v).toLocaleString('pt-BR');
+const fc=v=>v==null?'—':v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fca=v=>v==null?'—':(v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'M';
+
+function pct(a,b){ if(a==null||b==null||a===0)return null; return(b-a)/Math.abs(a)*100; }
+function varBadge(a,b){
+  const v=pct(a,b); if(v==null)return'<span class="vz">—</span>';
+  return`<span class="${v>=0?'vp':'vn'}">${v>=0?'▲':'▼'}${Math.abs(v).toFixed(1)}%</span>`;
+}
+function varText(a,b){
+  const v=pct(a,b); if(v==null)return{txt:'—',cls:'neu'};
+  return{txt:(v>=0?'▲':'▼')+Math.abs(v).toFixed(1)+'%',cls:v>=0?'pos':'neg'};
+}
+function varKpi(a,b){
+  const v=pct(a,b); if(v==null)return'';
+  return`<span class="kpi-var ${v>=0?'pos':'neg'}">${v>=0?'▲':'▼'}${Math.abs(v).toFixed(1)}%</span>`;
+}
+
+// ── TAGS ──
+function renderTags(){
+  const el=document.getElementById('activeTags'); el.innerHTML='';
+  [['emp','Hotel'],['mod','Modelo'],['praca','Praça'],['reg','Regional']].forEach(([k,lbl])=>{
+    S[k].forEach(v=>{
+      const t=document.createElement('div');t.className='tag';
+      t.innerHTML=`<span>${lbl}: ${v}</span><span class="x">✕</span>`;
+      t.querySelector('.x').onclick=()=>{S[k].delete(v);initDrops();render();};
+      el.appendChild(t);
+    });
+  });
+}
+
+// ── LABEL do período ──
+
+
+// ── MAIN RENDER ──
+function render(){
+  S.mes=parseInt(document.getElementById('selMes').value);
+  const idxs=fidxs(), mes=S.mes;
+  const mn=MESES[mes];
+  const showAcum = true; // acumulado sempre visível; em janeiro = igual ao mensal
+
+  const isEmpty = idxs.length===0;
+  document.getElementById('emptyState').style.display = isEmpty ? 'block' : 'none';
+  document.getElementById('kpiCards').style.display   = isEmpty ? 'none'  : 'grid';
+  document.getElementById('view-tabela').style.opacity  = isEmpty ? '0.25' : '1';
+  document.getElementById('view-graficos').style.opacity = isEmpty ? '0.25' : '1';
+  document.getElementById('hCount').textContent = isEmpty
+    ? 'Nenhum resultado para os filtros aplicados'
+    : idxs.length+' empreendimento(s)';
+
+  document.getElementById('thMes').textContent  = '📅 '+mn+' 2026';
+  document.getElementById('thAcum').textContent = mes===1 ? '📦 Janeiro 2026' : '📦 Jan–'+mn+' 2026';
+
+  document.getElementById('periodLine').innerHTML =
+    `<span class="period-chip">📅 ${mn} 2026</span>` +
+    `<span class="period-chip" style="background:var(--vc)">📦 ${mes===1?'Janeiro':('Jan–'+mn)} 2026</span>` +
+    (isEmpty ? '' : `&nbsp; <span>${idxs.length} empreendimento(s)</span>`);
+
+  renderTags();
+
+  const show2025=S.anosAnt.size>0;
+  if(isEmpty){ renderTable({occ:[null,null,null],dia:[null,null,null],dm:[null,null,null],rev:[null,null,null],rec:[null,null,null]},{occ:[null,null,null],dia:[null,null,null],dm:[null,null,null],rev:[null,null,null],rec:[null,null,null]},showAcum,show2025); return; }
+
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null); // Jan até mes (jan->jan = mesmo valor)
+
+  renderKPI(P, AC, mn, mn, showAcum, mes);
+  renderTable(P, AC, showAcum, show2025);
+  if(document.getElementById('view-graficos').classList.contains('active')) renderCharts();
+}
+
+// ── KPI ──
+function renderKPI(P, AC, pl, mn, showAcum, mes){
+  const rows=[
+    {lbl:'Ocupação',    pV:fp(P.occ[1]), pS:'Orç: '+fp(P.occ[0]),  pA:P.occ[0],pB:P.occ[1], aV:fp(AC.occ[1]), aS:'Orç: '+fp(AC.occ[0]),  aA:AC.occ[0],aB:AC.occ[1]},
+    {lbl:'Diárias',     pV:fn(P.dia[1]), pS:'Orç: '+fn(P.dia[0]),  pA:P.dia[0],pB:P.dia[1], aV:fn(AC.dia[1]), aS:'Orç: '+fn(AC.dia[0]),  aA:AC.dia[0],aB:AC.dia[1]},
+    {lbl:'Diária Média',pV:fc(P.dm[1]),  pS:'Orç: '+fc(P.dm[0]),   pA:P.dm[0], pB:P.dm[1],  aV:fc(AC.dm[1]),  aS:'Orç: '+fc(AC.dm[0]),   aA:AC.dm[0], aB:AC.dm[1]},
+    {lbl:'RevPAR',      pV:fc(P.rev[1]), pS:'Orç: '+fc(P.rev[0]),  pA:P.rev[0],pB:P.rev[1], aV:fc(AC.rev[1]), aS:'Orç: '+fc(AC.rev[0]),  aA:AC.rev[0],aB:AC.rev[1]},
+    {lbl:'Rec. Hosp.',  pV:P.rec[1]!=null?fca(P.rec[1]):'—', pS:'Orç: '+(P.rec[0]!=null?fca(P.rec[0]):'—'), pA:P.rec[0],pB:P.rec[1],
+                        aV:AC.rec[1]!=null?fca(AC.rec[1]):'—', aS:'Orç: '+(AC.rec[0]!=null?fca(AC.rec[0]):'—'), aA:AC.rec[0],aB:AC.rec[1]},
+  ];
+  document.getElementById('kpiCards').innerHTML=rows.map((r,i)=>`
+    <div class="kpi kpi-${i}">
+      <div class="kpi-lbl">${r.lbl}</div>
+      <div class="kpi-body">
+        <div class="kpi-side">
+          <div class="kpi-side-tag">${pl}</div>
+          <div class="kpi-val">${r.pV}</div>
+          <div class="kpi-sub">${r.pS} ${varKpi(r.pA,r.pB)}</div>
+        </div>
+        ${showAcum ? `<div class="kpi-div"></div>
+        <div class="kpi-side">
+          <div class="kpi-side-tag">${mes===1?'Janeiro':'Acumulado'}</div>
+          <div class="kpi-val" style="font-size:14px;margin-top:2px">${r.aV}</div>
+          <div class="kpi-sub">${r.aS} ${varKpi(r.aA,r.aB)}</div>
+        </div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+// ── TABLE ──
+function renderTable(P, AC, showAcum, show2025){
+  const rows=[
+    {lbl:'Ocupação',              p:P.occ,a:AC.occ,fmt:fp},
+    {lbl:'Diárias Vendidas',      p:P.dia,a:AC.dia,fmt:fn},
+    {lbl:'Diária Média',          p:P.dm, a:AC.dm, fmt:fc},
+    {lbl:'RevPAR',                p:P.rev,a:AC.rev,fmt:fc},
+    {lbl:'Receita de Hospedagem', p:P.rec,a:AC.rec,fmt:fc},
+  ];
+  // Mostrar/ocultar colunas 2025
+  ['thR25m','thVar25m','thR25a','thVar25a'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display=show2025?'':'none';
+  });
+  const colSpan = show2025 ? 5 : 3;
+  document.getElementById('thMes').setAttribute('colspan', colSpan);
+  document.getElementById('thAcum').setAttribute('colspan', colSpan);
+  const r25aSep=document.getElementById('thR25a');
+  const orc26a=document.getElementById('thOrc26a');
+  if(r25aSep) r25aSep.className=show2025?'th-r25 sep':'th-r25';
+  if(orc26a)  orc26a.className=show2025?'':'sep';
+
+  document.getElementById('tBody').innerHTML=rows.map(r=>{
+    const [po,pr6,pr5]=r.p,[ao,ar6,ar5]=r.a;
+    // Ordem: Real2025 | Orçado | Real2026 | Var%Orç | Var%2025
+    const r25m   = show2025 ? `<td class="td-r25">${r.fmt(pr5)}</td>` : '';
+    const var25m = show2025 ? `<td>${varBadge(pr5,pr6)}</td>` : '';
+    const r25a   = show2025 ? `<td class="td-r25 td-sep">${showAcum?r.fmt(ar5):'='}</td>` : '';
+    const var25a = show2025 ? `<td>${showAcum?varBadge(ar5,ar6):'—'}</td>` : '';
+    return`<tr>
+      <td>${r.lbl}</td>
+      ${r25m}
+      <td class="td-orc">${r.fmt(po)}</td>
+      <td class="td-r26">${r.fmt(pr6)}</td>
+      <td style="background:#f2f9f5">${varBadge(po,pr6)}</td>
+      ${var25m}
+      <td class="td-orc${show2025?'':' td-sep'}">${showAcum?r.fmt(ao):'='}</td>
+      <td class="td-r26">${showAcum?r.fmt(ar6):'='}</td>
+      <td style="background:#f2f9f5">${showAcum?varBadge(ao,ar6):'—'}</td>
+      ${var25a}
+    </tr>`;
+  }).join('');
+}
+
+// ── CHART TAB ──
+
+
+
+const CDEFS=[
+  {key:'occ',title:'Ocupação',     icon:'👥',fv:v=>v==null?null:Math.round(v*100)+'%',    isBorder:'#0a2d23',iconBg:'#e8f4f0'},
+  {key:'dm', title:'Diária Média', icon:'💵',fv:v=>v==null?null:Math.round(v).toLocaleString('pt-BR'), isBorder:'#2a606a',iconBg:'#e4eff8'},
+  {key:'rev',title:'RevPAR',       icon:'📊',fv:v=>v==null?null:Math.round(v).toLocaleString('pt-BR'), isBorder:'#12443f',iconBg:'#eaf2ef'},
+];
+
+function renderCharts(){
+  const idxs=fidxs(), mes=S.mes;
+  const grid=document.getElementById('chartGrid'); grid.innerHTML='';
+  if(!idxs.length) return;
+
+  CDEFS.forEach((def,ci)=>{
+    // Calcular as 3 séries de dados
+    const M  = calcMes(idxs, mes);                        // mensal
+    const AC = calcRange(idxs, 1, mes, null);             // acumulado jan-mes
+
+    const dataM  = {orc:[M[def.key][0]],  r26:[M[def.key][1]],  r25:S.anosAnt.size>0?[M[def.key][2]]:[], labels:[MESES[mes]]};
+    const dataAC = {orc:[AC[def.key][0]], r26:[AC[def.key][1]], r25:S.anosAnt.size>0?[AC[def.key][2]]:[], labels:[mes===1?'Janeiro':'Jan–'+MESES[mes]]};
+
+    // Mês a mês: jan até mes
+    const dataMM = {orc:[], r26:[], r25:[], labels:[]};
+    for(let m=1;m<=mes;m++){
+      const Mm=calcMes(idxs,m);
+      dataMM.orc.push(Mm[def.key][0]);
+      dataMM.r26.push(Mm[def.key][1]);
+      if(S.anosAnt.size>0) dataMM.r25.push(Mm[def.key][2]);
+      dataMM.labels.push(MESES3[m]);
+    }
+
+    // Variação Orç vs Real2026 e Real2025 vs Real2026
+    const vdOrc = varText(M[def.key][0], M[def.key][1]); // orçado → real26
+    const vd25  = S.anosAnt.size>0 ? varText(M[def.key][2], M[def.key][1]) : null; // real25 → real26
+
+    const col=document.createElement('div'); col.className='chart-card';
+    col.style.borderTop=`3px solid ${def.isBorder}`;
+
+    col.innerHTML=`
+      <div class="cc-body" style="padding-bottom:0">
+        <div class="chart-card-header">
+          <div class="cch-left">
+            <div class="cch-icon" style="background:${def.iconBg}">${def.icon}</div>
+            <div class="cch-title">${def.title}</div>
+          </div>
+          <div class="cch-vars">
+            <div class="cch-var-row">
+              <span class="cch-var-lbl">vs Orç</span>
+              <span class="cch-var ${vdOrc.cls}">${vdOrc.txt}</span>
+            </div>
+            ${vd25 ? `<div class="cch-var-row">
+              <span class="cch-var-lbl">vs 2025</span>
+              <span class="cch-var ${vd25.cls}">${vd25.txt}</span>
+            </div>` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="cc-tabs">
+        <div class="cctab active" onclick="switchCardTab(this,'cv_m_${def.key}','cv_ac_${def.key}','cv_mm_${def.key}')">📅 Mês</div>
+        <div class="cctab" onclick="switchCardTab(this,'cv_ac_${def.key}','cv_m_${def.key}','cv_mm_${def.key}')">📦 Acumulado</div>
+        <div class="cctab" onclick="switchCardTab(this,'cv_mm_${def.key}','cv_m_${def.key}','cv_ac_${def.key}')">📊 Mês a Mês</div>
+      </div>
+      <div class="cc-body">
+        <div class="card-legend">
+          ${S.anosAnt.size>0?`<div class="cl-item"><div class="cl-dot" style="background:${COL_R25}"></div>Real. 2025</div>`:''}
+          <div class="cl-item"><div class="cl-dot" style="background:${COL_ORC}"></div>Orçado 2026</div>
+          <div class="cl-item"><div class="cl-dot" style="background:${COL_R26}"></div>Real. 2026</div>
+        </div>
+        <div class="ch-wrap" id="cv_m_${def.key}" style="display:block"><canvas id="cvs_m_${def.key}"></canvas></div>
+        <div class="ch-wrap" id="cv_ac_${def.key}" style="display:none"><canvas id="cvs_ac_${def.key}"></canvas></div>
+        <div class="ch-wrap" id="cv_mm_${def.key}" style="display:none"><canvas id="cvs_mm_${def.key}"></canvas></div>
+      </div>`;
+
+    grid.appendChild(col);
+
+    // Registrar função de desenho em cada canvas e desenhar imediatamente (só o visível renderiza bem)
+    const attachDraw = (cvId, labels, orc, r26, r25) => {
+      const canvas = document.getElementById(cvId);
+      if(!canvas) return;
+      canvas._drawFn = () => drawBars(canvas, labels, orc, r26, r25, def.fv);
+    };
+    attachDraw('cvs_m_'+def.key,  dataM.labels,  dataM.orc,  dataM.r26,  dataM.r25);
+    attachDraw('cvs_ac_'+def.key, dataAC.labels, dataAC.orc, dataAC.r26, dataAC.r25);
+    attachDraw('cvs_mm_'+def.key, dataMM.labels, dataMM.orc, dataMM.r26, dataMM.r25);
+    // Desenhar os 3 imediatamente — display:none não impede o draw, 
+    // mas clientWidth=0, então forçamos largura do pai visível
+    requestAnimationFrame(()=>{
+      ['cvs_m_','cvs_ac_','cvs_mm_'].forEach(prefix=>{
+        const canvas=document.getElementById(prefix+def.key);
+        if(canvas && canvas._drawFn) canvas._drawFn();
+      });
+    });
+  });
+}
+
+function switchCardTab(clickedTab, showId, hideId1, hideId2){
+  const tabs=clickedTab.parentElement.querySelectorAll('.cctab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  clickedTab.classList.add('active');
+  document.getElementById(hideId1).style.display='none';
+  document.getElementById(hideId2).style.display='none';
+  document.getElementById(showId).style.display='block';
+  // Redesenhar o canvas agora que está visível (tinha largura 0)
+  requestAnimationFrame(()=>{
+    const wrap=document.getElementById(showId);
+    const canvas=wrap.querySelector('canvas');
+    if(canvas && canvas._drawFn) canvas._drawFn();
+  });
+}
+
+
+function drawBars(canvas,labels,orc,r26,r25,fmtVal){
+  const dpr=window.devicePixelRatio||1;
+  // Buscar largura de um ancestral visível se o pai estiver oculto
+  let refEl=canvas.parentElement;
+  while(refEl && refEl.clientWidth===0) refEl=refEl.parentElement;
+  const W=(refEl?refEl.clientWidth:300),H=canvas.parentElement.clientHeight||175;
+  canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+  const pad={l:10,r:10,t:30,b:24};
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const n=labels.length,gap=4,groupGap=n>1?Math.max(10,Math.min(28,cW*0.06)):60;
+  const groupW=(cW-(n-1)*groupGap)/n;
+  const bW=Math.max(5,Math.min(36,(groupW-2*gap)/3));
+  const all=[...orc,...r26,...r25].filter(v=>v!=null);
+  if(!all.length)return;
+  const maxV=Math.max(...all)*1.32;
+  ctx.strokeStyle='rgba(10,45,35,0.1)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t+cH);ctx.lineTo(pad.l+cW,pad.t+cH);ctx.stroke();
+  // Ordem visual: Real2025 | Orçado | Real2026
+  const colors=[COL_R25,COL_ORC,COL_R26],alphas=[0.7,0.82,1];
+  const sets=[r25,orc,r26];
+  labels.forEach((lbl,gi)=>{
+    const gx=pad.l+gi*(groupW+groupGap)+(groupW-3*bW-2*gap)/2;
+    sets.forEach((s,si)=>{
+      const v=s[gi];if(v==null)return;
+      const bh=Math.max(2,(v/maxV)*cH),bx=gx+si*(bW+gap),by=pad.t+cH-bh;
+      const r=Math.min(4,bW/2,bh/2);
+      ctx.globalAlpha=alphas[si];ctx.fillStyle=colors[si];
+      ctx.beginPath();
+      ctx.moveTo(bx+r,by);ctx.lineTo(bx+bW-r,by);
+      ctx.quadraticCurveTo(bx+bW,by,bx+bW,by+r);
+      ctx.lineTo(bx+bW,by+bh);ctx.lineTo(bx,by+bh);ctx.lineTo(bx,by+r);
+      ctx.quadraticCurveTo(bx,by,bx+r,by);ctx.closePath();ctx.fill();
+      ctx.globalAlpha=1;
+      const fmt=fmtVal(v);
+      if(fmt&&bW>14){
+        ctx.fillStyle='#1a2e2e';
+        ctx.font=`bold ${Math.max(8,Math.min(10,bW*0.5))}px Inter`;
+        ctx.textAlign='center';
+        ctx.fillText(fmt,bx+bW/2,by-5);
+      }
+    });
+    ctx.fillStyle='#8a9fa8';ctx.font='9px Inter';ctx.textAlign='center';
+    const cx=gx+(3*bW+2*gap)/2;
+    ctx.fillText(lbl,cx,pad.t+cH+16);
+  });
+}
+
+function doSearch(){
+  const btn=document.getElementById('searchBtn');
+  btn.classList.remove('dirty');
+  btn.textContent='✓ Atualizado';
+  setTimeout(()=>{ btn.textContent='🔍 Pesquisar'; },1800);
+  render();
+}
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['resumo','tabela','graficos'][i]===tab));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  document.body.className='tab-'+tab;
+  if(tab==='graficos') setTimeout(renderCharts,30);
+  if(tab==='resumo'){ initResumoSelect(); renderResumo(); }
+  else { initDrops(); syncLbl('emp','lEmp','bEmp'); buildAnoAntDrop(); syncAnoAntLabel(); render(); }
+}
+
+
+// ── RESUMO HOTÉIS ──
+const HOTEIS_RESUMO = {
+  'Centro': {
+    razaoSocial: 'LAGHETTO HOTEIS LTDA FL 04',
+    cnpj: '19.114.125/0005-02',
+    abertura: '2014',
+    endereco: 'R. São Pedro, 374 - Centro, Gramado - RS, 95670-150',
+    enderecoUrl: 'https://maps.google.com/?q=R.+S%C3%A3o+Pedro,+374,+Gramado,+RS',
+    pool: 64, praca: 'Gramado', regional: 'R2', modelo: 'Locado',
+    aeb: { status: 'Interno', custoMedio: 19.61, ventilacao: 35.90, pasante: 65.00 },
+    contratos: [
+      { tipo: 'Hotel', termino: '31/01/2028', modelo: 'Locação Fixa e Variável',
+        itens: [
+          {lbl:'Fixo — 27 apartamentos', val:'R$ 87.090,85'},
+          {lbl:'Variável — ISS 3% · PIS 0,65% · COFINS 3%', val:'<strong style="font-size:15px;color:var(--ve)">25% da receita líq. ÷ 64 apts</strong>'},
+        ]},
+      { tipo: 'Sala/Loja 1', termino: '28/02/2029', modelo: 'Valor Fixo', itens: [{lbl:'Aluguel fixo mensal', val:'R$ 35.833,36'}]},
+      { tipo: 'Sala/Loja 2', termino: '31/03/2030', modelo: 'Valor Fixo', itens: [{lbl:'Aluguel fixo mensal', val:'R$ 15.565,32'}]},
+    ],
+    fundoReserva: '3% — suportado pelo investidor',
+    ultimaAtualizacao: '17/06/2026',
+  },
+};
+
+function initResumoSelect(){
+  const sel = document.getElementById('selResumoHotel');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— escolha um hotel —</option>';
+  if(!DB || !DB.hotels || !DB.hotels.length) return;
+  const comDados = DB.hotels.filter(h => HOTEIS_RESUMO[h.nome]);
+  const semDados = DB.hotels.filter(h => !HOTEIS_RESUMO[h.nome]);
+  if(comDados.length){
+    const grp1 = document.createElement('optgroup'); grp1.label = 'Disponíveis';
+    comDados.forEach(h => { const o=document.createElement('option'); o.value=h.nome; o.textContent=h.nome; grp1.appendChild(o); });
+    sel.appendChild(grp1);
+  }
+  if(semDados.length){
+    const grp2 = document.createElement('optgroup'); grp2.label = 'Em breve';
+    semDados.forEach(h => { const o=document.createElement('option'); o.value=h.nome; o.textContent=h.nome; o.disabled=true; grp2.appendChild(o); });
+    sel.appendChild(grp2);
+  }
+}
+
+function renderResumo(){
+  const sel = document.getElementById('selResumoHotel').value;
+  const el  = document.getElementById('resumoContent');
+  if(!sel){
+    el.innerHTML = '<div class="rh-empty"><div class="rh-empty-icon">🏨</div><div class="rh-empty-title">Selecione um hotel</div><div style="font-size:13px;color:var(--muted)">Escolha um empreendimento acima</div></div>';
+    return;
+  }
+  const d = HOTEIS_RESUMO[sel];
+  if(!d){
+    el.innerHTML = '<div class="rh-empty"><div class="rh-empty-icon">🔜</div><div class="rh-empty-title">Dados em breve</div><div style="font-size:13px;color:var(--muted)">As informações de <b>'+sel+'</b> serão cadastradas em breve.</div></div>';
+    return;
+  }
+  el.innerHTML = `
+  <div class="rh-card">
+    <div class="rh-header">
+      <div>
+        <div class="rh-hotel-name">${sel}</div>
+        <div class="rh-hotel-sub">${d.razaoSocial} &nbsp;·&nbsp; CNPJ ${d.cnpj}</div>
+        <div class="rh-badges">
+          <div class="rh-badge">📍 ${d.praca}</div>
+          <div class="rh-badge">🏢 ${d.modelo}</div>
+          <div class="rh-badge">Regional ${d.regional}</div>
+          <div class="rh-badge">🛏️ ${d.pool} apts</div>
+          <div class="rh-badge">📅 Abertura ${d.abertura}</div>
+        </div>
+      </div>
+      <div class="rh-update">Atualizado em ${d.ultimaAtualizacao}</div>
+    </div>
+    <div class="rh-body">
+      <div class="rh-section">
+        <div class="rh-section-title">Identificação</div>
+        <div class="rh-info-grid">
+          <div class="rh-info-item"><div class="rh-info-label">Razão Social</div><div class="rh-info-val">${d.razaoSocial}</div></div>
+          <div class="rh-info-item"><div class="rh-info-label">CNPJ</div><div class="rh-info-val">${d.cnpj}</div></div>
+          <div class="rh-info-item"><div class="rh-info-label">Abertura</div><div class="rh-info-val">${d.abertura}</div></div>
+          <div class="rh-info-item" style="grid-column:1/-1"><div class="rh-info-label">Endereço</div><div class="rh-info-val"><a href="${d.enderecoUrl}" target="_blank" style="color:var(--vc);text-decoration:none">${d.endereco} ↗</a></div></div>
+        </div>
+      </div>
+      <div class="rh-section">
+        <div class="rh-section-title">AEB — Alimentação e Bebidas</div>
+        <div class="rh-aeb-grid">
+          <div class="rh-aeb-card"><div class="rh-aeb-val">${d.aeb.status}</div><div class="rh-aeb-lbl">Operação Atual</div></div>
+          <div class="rh-aeb-card"><div class="rh-aeb-val">R$ ${d.aeb.custoMedio.toFixed(2).replace('.',',')}</div><div class="rh-aeb-lbl">Custo Médio Café 2026</div></div>
+          <div class="rh-aeb-card"><div class="rh-aeb-val">R$ ${d.aeb.ventilacao.toFixed(2).replace('.',',')}</div><div class="rh-aeb-lbl">Ventilação do Café</div></div>
+          <div class="rh-aeb-card"><div class="rh-aeb-val">R$ ${d.aeb.pasante.toFixed(2).replace('.',',')}</div><div class="rh-aeb-lbl">Café Passante</div></div>
+        </div>
+      </div>
+      <div class="rh-section">
+        <div class="rh-section-title">Contratos com Investidores</div>
+        <div class="rh-contrato-grid">
+          ${d.contratos.map(ct=>`
+          <div class="rh-contrato-card">
+            <div class="rh-contrato-title">${ct.tipo}</div>
+            <div class="rh-contrato-row"><span class="lbl">Término</span><span class="val">${ct.termino}</span></div>
+            <div class="rh-contrato-row"><span class="lbl">Modelo</span><span class="val">${ct.modelo}</span></div>
+            ${ct.itens.map(it=>`<div class="rh-contrato-row"><span class="lbl">${it.lbl}</span><span class="val">${it.val}</span></div>`).join('')}
+          </div>`).join('')}
+          <div class="rh-contrato-card" style="border-left-color:var(--azul)">
+            <div class="rh-contrato-title" style="color:var(--vc)">Fundo de Reserva</div>
+            <div class="rh-contrato-row"><span class="lbl">Percentual</span><span class="val">${d.fundoReserva}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── BOOT ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+</script>
+</body>
+</html>
