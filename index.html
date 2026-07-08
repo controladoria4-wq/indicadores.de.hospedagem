@@ -167,7 +167,7 @@ canvas{display:block}
 .comp-table-wrap .comp-table thead tr.ct-h1 th{background:var(--ve);color:#fff;font-family:"Inter",sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:10px 12px;text-align:center!important;border-bottom:2px solid var(--vm)}
 .comp-table-wrap .comp-table thead tr.ct-h1 th:first-child{text-align:left!important;background:var(--vm)}
 .comp-table-wrap .comp-table thead tr.ct-h2 th{background:#f8fbfc;color:var(--muted);font-family:"Inter",sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 12px;text-align:center!important;border-bottom:2px solid var(--border)}
-.comp-table-wrap .comp-table thead tr.ct-h2 th:first-child{text-align:left!important}
+.comp-table-wrap .comp-table thead tr.ct-h2 th:first-child{text-align:center!important}
 .comp-table-wrap .comp-table thead tr.ct-h2 .th-var{background:#edf7f2;color:var(--green);text-align:center!important}
 .comp-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:right!important;color:var(--text)}
 .comp-table tbody td:first-child{text-align:left!important;font-weight:700;color:var(--ve);font-family:"Inter",sans-serif}
@@ -1677,9 +1677,9 @@ function renderComparativo(){
   // Injetar CSS de alta prioridade diretamente no conteúdo renderizado
   const forceCss = `<style>
     tr.ct-h2 th { text-align: center !important; }
-    tr.ct-h2 th:first-child { text-align: left !important; }
+    tr.ct-h2 th:first-child { text-align: center !important; }
     tr.ct-h1 th { text-align: center !important; }
-    tr.ct-h1 th:first-child { text-align: left !important; }
+    
     .comp-table tbody td { text-align: right !important; }
     .comp-table tbody td:first-child { text-align: left !important; }
     .comp-table tbody tr.ct-total td { text-align: right !important; }
