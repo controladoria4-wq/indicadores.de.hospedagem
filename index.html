@@ -1880,44 +1880,72 @@ function downloadChart(canvasId, nome){
 
   const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
 
-  // Redesenhar o canvas ativo em alta resolução antes de capturar
+  // Criar um canvas standalone em alta resolução
+  const EXPORT_W = 800, EXPORT_H = 400;
+  const SCALE = 3;
+
+  // Redesenhar em tamanho maior temporariamente
   if(canvas._drawFn){
-    const dpr = window.devicePixelRatio || 1;
-    const scale = 4; // alta resolução
-    const W = card.clientWidth || 400;
-    const H = 220;
-    canvas.width  = W * scale;
-    canvas.height = H * scale;
-    canvas.style.width  = W + 'px';
-    canvas.style.height = H + 'px';
-    canvas.getContext('2d').scale(scale, scale);
+    canvas.width  = EXPORT_W * SCALE;
+    canvas.height = EXPORT_H * SCALE;
+    canvas.style.width  = EXPORT_W + 'px';
+    canvas.style.height = EXPORT_H + 'px';
     canvas._drawFn();
   }
 
-  // Capturar o card diretamente (sem clonar) em escala alta
-  html2canvas(card, {
+  // Criar imagem final combinando header do card + canvas grande
+  const finalCanvas = document.createElement('canvas');
+  const HEADER_H = 120 * SCALE; // espaço para título, variações e legenda
+  finalCanvas.width  = EXPORT_W * SCALE;
+  finalCanvas.height = (EXPORT_H + 120) * SCALE;
+  const ctx = finalCanvas.getContext('2d');
+
+  // Fundo branco
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+  // Capturar header (título + variações + legenda) via html2canvas
+  const headerEl = card.querySelector('.cc-body') || card;
+  html2canvas(headerEl, {
     backgroundColor: '#ffffff',
-    scale: 4,
+    scale: SCALE,
     useCORS: true,
     logging: false,
-    ignoreElements: el => el.classList.contains('btn-download-chart') || el.classList.contains('cc-tabs'),
-  }).then(result => {
+    ignoreElements: el =>
+      el.classList.contains('btn-download-chart') ||
+      el.classList.contains('cc-tabs') ||
+      el.classList.contains('ch-wrap'),
+  }).then(headerCanvas => {
+    // Desenhar header no topo
+    ctx.drawImage(headerCanvas, 0, 0);
+
+    // Desenhar canvas do gráfico abaixo
+    ctx.drawImage(canvas, 0, headerCanvas.height);
+
     // Restaurar canvas ao tamanho normal
     if(canvas._drawFn){
       const dpr = window.devicePixelRatio || 1;
       const W = card.clientWidth || 400;
-      const H = 175;
       canvas.width  = W * dpr;
-      canvas.height = H * dpr;
+      canvas.height = 175 * dpr;
       canvas.style.width  = W + 'px';
-      canvas.style.height = H + 'px';
+      canvas.style.height = '175px';
       canvas._drawFn();
     }
+
     const link = document.createElement('a');
     link.download = `Laghetto_${nome.replace(/[^a-zA-Z0-9]/g,'_')}_${mes}_2026.png`;
-    link.href = result.toDataURL('image/png');
+    link.href = finalCanvas.toDataURL('image/png');
     link.click();
   }).catch(err => {
+    // Restaurar canvas
+    if(canvas._drawFn){
+      const dpr = window.devicePixelRatio || 1;
+      const W = card.clientWidth || 400;
+      canvas.width  = W * dpr; canvas.height = 175 * dpr;
+      canvas.style.width = W+'px'; canvas.style.height = '175px';
+      canvas._drawFn();
+    }
     console.error('html2canvas error:', err);
     alert('Erro ao gerar imagem.');
   });
