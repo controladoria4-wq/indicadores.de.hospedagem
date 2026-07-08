@@ -1404,13 +1404,16 @@ function downloadTable(){
   const kpis    = document.getElementById('kpiCards');
   const tabWrap = document.getElementById('tableWrap');
 
+  // Dimensões fixas: 10.77cm x 5.99cm a 96dpi × 2x = 814 x 452px
+  const W_PX = 814, H_PX = 452;
+
   // Container temporário para agrupar tudo
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;display:inline-block;min-width:900px';
+  wrap.style.cssText = `background:transparent;padding:12px 16px;font-family:Inter,sans-serif;width:${W_PX}px;height:${H_PX}px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between`;
 
   // Logo / título
   const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px';
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px';
   const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
   header.innerHTML = `
     <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
@@ -1423,20 +1426,20 @@ function downloadTable(){
 
   // Linha divisória
   const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
+  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:8px;border-radius:1px';
   wrap.appendChild(hr);
 
   // Período
   if(period && period.innerHTML.trim()){
     const p = period.cloneNode(true);
-    p.style.marginBottom = '12px';
+    p.style.marginBottom = '6px'; p.style.fontSize='10px';
     wrap.appendChild(p);
   }
 
   // KPI cards
   if(kpis && kpis.innerHTML.trim()){
     const k = kpis.cloneNode(true);
-    k.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px';
+    k.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px';
     wrap.appendChild(k);
   }
 
@@ -1450,7 +1453,7 @@ function downloadTable(){
 
   // Rodapé
   const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
+  footer.style.cssText = 'margin-top:6px;font-size:8px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
   footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
   wrap.appendChild(footer);
 
@@ -1461,14 +1464,15 @@ function downloadTable(){
   document.body.appendChild(wrap);
 
   html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
+    backgroundColor: null,  // transparente
+    scale: 2,               // 2x → 814x452px final (=10.77cm x 5.99cm @96dpi)
     useCORS: true,
     logging: false,
-    width: wrap.scrollWidth,
-    height: wrap.scrollHeight,
+    width:  W_PX,
+    height: H_PX,
   }).then(canvas => {
     document.body.removeChild(wrap);
+    // Exportar como PNG com transparência (não JPEG)
     const link = document.createElement('a');
     link.download = `Laghetto_Analitico_${mes}_2026.png`;
     link.href = canvas.toDataURL('image/png');
