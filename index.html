@@ -359,7 +359,7 @@ body.tab-resumo .main{padding-top:16px}
   <!-- TABELA -->
   <div class="view" id="view-tabela">
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-  <button class="btn-download-table" onclick="downloadTable()">📷 Salvar tabela como imagem</button>
+  <button class="btn-download-table" onclick="downloadTable()">📷 Salvar como imagem</button>
 </div>
 <div class="twrap" id="tableWrap">
       <table>
@@ -1393,30 +1393,92 @@ function downloadChart(canvasId, nome){
 }
 
 function downloadTable(){
-  const el = document.getElementById('tableWrap');
-  if(!el){ alert('Tabela não encontrada.'); return; }
   if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
 
   const btn = document.querySelector('.btn-download-table');
-  btn.textContent = '⏳ Gerando...';
+  btn.innerHTML = '⏳ Gerando...';
   btn.disabled = true;
 
-  html2canvas(el, {
-    backgroundColor: '#ffffff',
-    scale: 2,  // alta resolução
+  // Criar wrapper temporário com todos os elementos relevantes
+  const period  = document.getElementById('periodLine');
+  const kpis    = document.getElementById('kpiCards');
+  const tabWrap = document.getElementById('tableWrap');
+
+  // Container temporário para agrupar tudo
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;display:inline-block;min-width:900px';
+
+  // Logo / título
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px';
+  const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
+  header.innerHTML = `
+    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
+      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
+    </div>
+    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
+      Analítico de Indicadores · ${mes} 2026
+    </div>`;
+  wrap.appendChild(header);
+
+  // Linha divisória
+  const hr = document.createElement('div');
+  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
+  wrap.appendChild(hr);
+
+  // Período
+  if(period && period.innerHTML.trim()){
+    const p = period.cloneNode(true);
+    p.style.marginBottom = '12px';
+    wrap.appendChild(p);
+  }
+
+  // KPI cards
+  if(kpis && kpis.innerHTML.trim()){
+    const k = kpis.cloneNode(true);
+    k.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px';
+    wrap.appendChild(k);
+  }
+
+  // Tabela
+  if(tabWrap){
+    const t = tabWrap.cloneNode(true);
+    // Remover botão de download da cópia
+    t.querySelectorAll('.btn-download-table,.btn-download-wrap').forEach(b=>b.remove());
+    wrap.appendChild(t);
+  }
+
+  // Rodapé
+  const footer = document.createElement('div');
+  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
+  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
+  wrap.appendChild(footer);
+
+  // Adicionar ao body temporariamente (fora da tela)
+  wrap.style.position = 'fixed';
+  wrap.style.left = '-9999px';
+  wrap.style.top = '0';
+  document.body.appendChild(wrap);
+
+  html2canvas(wrap, {
+    backgroundColor: '#f0f5fa',
+    scale: 2,
     useCORS: true,
     logging: false,
+    width: wrap.scrollWidth,
+    height: wrap.scrollHeight,
   }).then(canvas => {
+    document.body.removeChild(wrap);
     const link = document.createElement('a');
-    const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
     link.download = `Laghetto_Analitico_${mes}_2026.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
-    btn.innerHTML = '📷 Salvar tabela como imagem';
+    btn.innerHTML = '📷 Salvar como imagem';
     btn.disabled = false;
   }).catch(err => {
+    document.body.removeChild(wrap);
     console.error('html2canvas error:', err);
-    btn.innerHTML = '📷 Salvar tabela como imagem';
+    btn.innerHTML = '📷 Salvar como imagem';
     btn.disabled = false;
     alert('Erro ao gerar imagem. Tente novamente.');
   });
