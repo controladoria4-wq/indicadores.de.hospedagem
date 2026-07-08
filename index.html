@@ -1874,6 +1874,272 @@ function downloadChart(canvasId, nome){
   const canvas = document.getElementById(canvasId);
   if(!canvas || !canvas._drawFn){ alert('Gráfico não encontrado.'); return; }
 
+  const card = canvas.closest('.chart-card');
+  const mes  = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
+
+  // 10.77cm x 5.99cm @ 96dpi x2 para nitidez
+  const W = 814, H = 452;
+
+  const exp = document.createElement('canvas');
+  exp.width = W; exp.height = H;
+  const ctx = exp.getContext('2d');
+
+  // Fundo branco
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── TÍTULO ──
+  ctx.font = 'bold 18px Inter, Arial, sans-serif';
+  ctx.fillStyle = '#0a2d23';
+  ctx.fillText(nome.replace(/_/g,' '), 52, 34);
+
+  // ── ÍCONE ──
+  ctx.fillStyle = '#e8f4f0';
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(10, 12, 36, 36, 7);
+  else ctx.rect(10, 12, 36, 36);
+  ctx.fill();
+
+  // ── VARIAÇÕES (canto direito) ──
+  if(card){
+    const varRows = card.querySelectorAll('.cch-var-row');
+    let vy = 24;
+    varRows.forEach(row=>{
+      const lbl = row.querySelector('.cch-var-lbl');
+      const val = row.querySelector('.cch-var');
+      if(!lbl||!val) return;
+      const isPos = val.classList.contains('pos');
+      const isNeg = val.classList.contains('neg');
+      ctx.font = '700 9px Inter, Arial, sans-serif';
+      ctx.fillStyle = '#8a9fa8';
+      ctx.textAlign = 'right';
+      ctx.fillText(lbl.textContent.toUpperCase(), W - 120, vy);
+      ctx.font = 'bold 14px Inter, Arial, sans-serif';
+      ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
+      ctx.fillText(val.textContent, W - 10, vy);
+      vy += 22;
+    });
+  }
+  ctx.textAlign = 'left';
+
+  // ── LEGENDA ──
+  if(card){
+    const items = card.querySelectorAll('.cl-item');
+    let lx = 10, ly = 64;
+    items.forEach(item=>{
+      const dot = item.querySelector('.cl-dot');
+      const txt = item.textContent.trim();
+      if(!dot) return;
+      ctx.fillStyle = dot.style.background || '#ccc';
+      ctx.beginPath(); ctx.arc(lx+5, ly-4, 5, 0, Math.PI*2); ctx.fill();
+      ctx.font = '10px Inter, Arial, sans-serif';
+      ctx.fillStyle = '#6b8a8e';
+      ctx.fillText(txt, lx+14, ly);
+      lx += ctx.measureText(txt).width + 30;
+    });
+  }
+
+  // ── GRÁFICO: redesenhar em tamanho da imagem ──
+  const GW = W, GH = H - 76;
+  const savedW  = canvas.width,  savedH  = canvas.height;
+  const savedSW = canvas.style.width, savedSH = canvas.style.height;
+
+  canvas.width  = GW * 2; canvas.height = GH * 2;
+  canvas.style.width = GW + 'px'; canvas.style.height = GH + 'px';
+  canvas._drawFn();
+
+  ctx.drawImage(canvas, 0, 76, GW, GH);
+
+  // Restaurar
+  canvas.width  = savedW;  canvas.height  = savedH;
+  canvas.style.width = savedSW; canvas.style.height = savedSH;
+  canvas._drawFn();
+
+  const link = document.createElement('a');
+  link.download = 'Laghetto_' + nome.replace(/[^a-zA-Z0-9]/g,'_') + '_' + mes + '_2026.png';
+  link.href = exp.toDataURL('image/png');
+  link.click();
+}
+
+
+function downloadComparativo(){
+  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
+  const el = document.getElementById('compContent');
+  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
+
+  const btn = document.querySelector('#view-comparativo .btn-download-table');
+  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
+
+  // Header
+  const mes = [...compMeses].sort((a,b)=>a-b);
+  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
+  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
+                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
+  header.innerHTML = `
+    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
+      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
+    </div>
+    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
+      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
+    </div>`;
+  wrap.appendChild(header);
+
+  const hr = document.createElement('div');
+  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
+  wrap.appendChild(hr);
+
+  const content = el.cloneNode(true);
+  wrap.appendChild(content);
+
+  const footer = document.createElement('div');
+  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
+  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
+  wrap.appendChild(footer);
+
+  document.body.appendChild(wrap);
+
+  html2canvas(wrap, {
+    backgroundColor: '#f0f5fa',
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    width: wrap.scrollWidth,
+    windowWidth: wrap.scrollWidth + 100,
+  }).then(canvas => {
+    document.body.removeChild(wrap);
+    const link = document.createElement('a');
+    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
+  }).catch(err => {
+    document.body.removeChild(wrap);
+    console.error(err);
+    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
+  });
+}
+
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+function downloadChart(canvasId, nome){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas || !canvas._drawFn){ alert('Gráfico não encontrado.'); return; }
+
   const card  = canvas.closest('.chart-card');
   const mes   = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
 
