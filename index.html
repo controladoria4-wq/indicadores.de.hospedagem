@@ -111,7 +111,7 @@ tbody tr{border-bottom:1px solid #eef3f6;transition:background .1s}
 tbody tr:hover{background:#f6faf8}
 tbody tr:last-child{border-bottom:none}
 td{padding:12px 10px;text-align:right;font-size:13px;vertical-align:middle}
-td:first-child{text-align:left;font-family:"Inter",sans-serif;font-weight:800;font-size:11px;color:var(--ve);padding-left:14px;text-transform:uppercase;letter-spacing:.5px}
+.twrap td:first-child{text-align:left;font-family:"Inter",sans-serif;font-weight:800;font-size:11px;color:var(--ve);padding-left:14px;text-transform:uppercase;letter-spacing:.5px}
 .td-orc{color:#8a9fa8;font-weight:400;font-size:12px}
 .td-r26{color:var(--ve);font-weight:700}
 .td-r25{color:#8a9fa8;font-weight:400;font-size:12px}
@@ -164,17 +164,17 @@ canvas{display:block}
 .comp-filter-sep{width:1px;height:28px;background:var(--border);flex-shrink:0}
 .comp-table-wrap{overflow-x:auto;border-radius:12px;border:1.5px solid var(--border);box-shadow:var(--sh)}
 .comp-table{width:100%;border-collapse:collapse;font-family:"Source Sans Pro",sans-serif;font-size:12px;white-space:nowrap}
-.comp-table thead tr.ct-h1 th{background:var(--ve);color:#fff;font-family:"Inter",sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:10px 12px;text-align:center;border-bottom:2px solid var(--vm)}
-.comp-table thead tr.ct-h1 th:first-child{text-align:left;background:var(--vm)}
-.comp-table thead tr.ct-h2 th{background:#f8fbfc;color:var(--muted);font-family:"Inter",sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 12px;text-align:center;border-bottom:2px solid var(--border)}
-.comp-table thead tr.ct-h2 th:first-child{text-align:left}
-.comp-table thead tr.ct-h2 .th-var{background:#edf7f2;color:var(--green);text-align:center}
-.comp-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:right;color:var(--text)}
-.comp-table tbody td:first-child{text-align:left;font-weight:700;color:var(--ve);font-family:"Inter",sans-serif}
+.comp-table-wrap .comp-table thead tr.ct-h1 th{background:var(--ve);color:#fff;font-family:"Inter",sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:10px 12px;text-align:center!important;border-bottom:2px solid var(--vm)}
+.comp-table-wrap .comp-table thead tr.ct-h1 th:first-child{text-align:left!important;background:var(--vm)}
+.comp-table-wrap .comp-table thead tr.ct-h2 th{background:#f8fbfc;color:var(--muted);font-family:"Inter",sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 12px;text-align:center!important;border-bottom:2px solid var(--border)}
+.comp-table-wrap .comp-table thead tr.ct-h2 th:first-child{text-align:left!important}
+.comp-table-wrap .comp-table thead tr.ct-h2 .th-var{background:#edf7f2;color:var(--green);text-align:center!important}
+.comp-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:right!important;color:var(--text)}
+.comp-table tbody td:first-child{text-align:left!important;font-weight:700;color:var(--ve);font-family:"Inter",sans-serif}
 .comp-table tbody tr:nth-child(even) td{background:#fafcfd}
 .comp-table tbody tr:hover td{background:#eef4f7}
-.comp-table tbody tr.ct-total td{background:var(--ve)!important;color:#fff!important;font-weight:800;font-family:"Inter",sans-serif;font-size:12px;border-bottom:none}
-.comp-table tbody tr.ct-total td:first-child{color:#b4d4df!important}
+.comp-table tbody tr.ct-total td{background:var(--ve)!important;color:#fff!important;font-weight:800;font-family:"Inter",sans-serif;font-size:12px;border-bottom:none;text-align:right!important}
+.comp-table tbody tr.ct-total td:first-child{color:#b4d4df!important;text-align:left!important}
 .ct-var.pos{color:var(--green);font-weight:800}
 .ct-var.neg{color:var(--red);font-weight:800}
 .ct-var.neu{color:var(--muted)}
@@ -1564,10 +1564,10 @@ function renderComparativo(){
           <th colspan="3" class="ct-sep">RevPAR</th>
         </tr>
         <tr class="ct-h2">
-          <th>Orçado</th><th>Real. ${anoLabel}</th><th class="th-var">Var %</th>
-          <th class="ct-sep">Orçado</th><th>Real. ${anoLabel}</th><th class="th-var">Var %</th>
-          <th class="ct-sep">Orçado</th><th>Real. ${anoLabel}</th><th class="th-var">Var %</th>
-          <th class="ct-sep">Orçado</th><th>Real. ${anoLabel}</th><th class="th-var">Var %</th>
+          <th style="text-align:center">Orçado</th><th style="text-align:center">Real. ${anoLabel}</th><th class="th-var" style="text-align:center">Var %</th>
+          <th class="ct-sep" style="text-align:center">Orçado</th><th style="text-align:center">Real. ${anoLabel}</th><th class="th-var" style="text-align:center">Var %</th>
+          <th class="ct-sep" style="text-align:center">Orçado</th><th style="text-align:center">Real. ${anoLabel}</th><th class="th-var" style="text-align:center">Var %</th>
+          <th class="ct-sep" style="text-align:center">Orçado</th><th style="text-align:center">Real. ${anoLabel}</th><th class="th-var" style="text-align:center">Var %</th>
         </tr>
       </thead>
       <tbody>
@@ -1644,10 +1644,10 @@ function renderComparativo(){
             <th colspan="3" class="ct-sep">RevPAR</th>
           </tr>
           <tr class="ct-h2">
-            <th>Orçado</th><th>Realizado</th><th class="th-var">Var %</th>
-            <th class="ct-sep">Orçado</th><th>Realizado</th><th class="th-var">Var %</th>
-            <th class="ct-sep">Orçado</th><th>Realizado</th><th class="th-var">Var %</th>
-            <th class="ct-sep">Orçado</th><th>Realizado</th><th class="th-var">Var %</th>
+            <th style="text-align:center">Orçado</th><th style="text-align:center">Realizado</th><th class="th-var" style="text-align:center">Var %</th>
+            <th class="ct-sep" style="text-align:center">Orçado</th><th style="text-align:center">Realizado</th><th class="th-var" style="text-align:center">Var %</th>
+            <th class="ct-sep" style="text-align:center">Orçado</th><th style="text-align:center">Realizado</th><th class="th-var" style="text-align:center">Var %</th>
+            <th class="ct-sep" style="text-align:center">Orçado</th><th style="text-align:center">Realizado</th><th class="th-var" style="text-align:center">Var %</th>
           </tr>
         </thead>
         <tbody>
@@ -1673,7 +1673,19 @@ function renderComparativo(){
       </table></div>
     </div>`;
   });
-  el.innerHTML=html;
+  // Injetar CSS de alta prioridade diretamente no conteúdo renderizado
+  const forceCss = `<style>
+    tr.ct-h2 th { text-align: center !important; }
+    tr.ct-h2 th:first-child { text-align: left !important; }
+    tr.ct-h1 th { text-align: center !important; }
+    tr.ct-h1 th:first-child { text-align: left !important; }
+    .comp-table tbody td { text-align: right !important; }
+    .comp-table tbody td:first-child { text-align: left !important; }
+    .comp-table tbody tr.ct-total td { text-align: right !important; }
+    .comp-table tbody tr.ct-total td:first-child { text-align: left !important; }
+  </style>`;
+  el.innerHTML = forceCss + html;
+
 }
 
 function initComparativo(){
@@ -1878,26 +1890,49 @@ function downloadChart(canvasId, nome){
     el.style.display = el.id === activeId ? 'block' : 'none';
   });
 
-  // Wrapper limpo com fundo branco e padding
+  // Forçar tamanho do card para ocupar mais espaço
+  clone.style.cssText = 'width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:none;border:none';
+  // Aumentar altura do canvas
+  clone.querySelectorAll('.ch-wrap').forEach(el=>{
+    if(el.style.display !== 'none') el.style.height = '280px';
+  });
+
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:16px;border-radius:12px;overflow:hidden;box-shadow:none';
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:20px;display:inline-block';
   wrap.appendChild(clone);
   document.body.appendChild(wrap);
 
-  // Copiar canvas ativo para clone
+  // Copiar e redesenhar canvas ativo no tamanho maior
   const origCv  = canvas;
   const cloneCv = clone.querySelector(`canvas#${canvasId}`);
-  if(cloneCv && origCv && origCv.width > 0){
-    cloneCv.width  = origCv.width;
-    cloneCv.height = origCv.height;
-    cloneCv.style.width  = origCv.style.width;
-    cloneCv.style.height = origCv.style.height;
-    cloneCv.getContext('2d').drawImage(origCv, 0, 0);
+  if(cloneCv && origCv){
+    // Desenhar em tamanho maior
+    const newW = 560 * 2, newH = 280 * 2;
+    cloneCv.width  = newW;
+    cloneCv.height = newH;
+    cloneCv.style.width  = '560px';
+    cloneCv.style.height = '280px';
+    // Redesenhar usando a função registrada
+    if(origCv._drawFn){
+      // Temporariamente trocar tamanho do canvas original para redesenho
+      const savedW = origCv.width, savedH = origCv.height;
+      const savedSW = origCv.style.width, savedSH = origCv.style.height;
+      origCv.width = newW; origCv.height = newH;
+      origCv.style.width = '560px'; origCv.style.height = '280px';
+      origCv._drawFn();
+      cloneCv.getContext('2d').drawImage(origCv, 0, 0);
+      // Restaurar
+      origCv.width = savedW; origCv.height = savedH;
+      origCv.style.width = savedSW; origCv.style.height = savedSH;
+      origCv._drawFn();
+    } else {
+      cloneCv.getContext('2d').drawImage(origCv, 0, 0, newW, newH);
+    }
   }
 
   html2canvas(wrap, {
     backgroundColor: '#ffffff',
-    scale: 3,          // escala 3x para maior nitidez
+    scale: 3,
     useCORS: true,
     logging: false,
   }).then(result => {
