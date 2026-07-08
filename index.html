@@ -1880,70 +1880,44 @@ function downloadChart(canvasId, nome){
 
   const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
 
-  // Clonar card e remover elementos indesejados
-  const clone = card.cloneNode(true);
-  clone.querySelectorAll('.btn-download-chart').forEach(b=>b.remove());
-  // Remover abas (MÊS / ACUMULADO / MÊS A MÊS)
-  clone.querySelectorAll('.cc-tabs').forEach(b=>b.remove());
-  // Tornar todos os ch-wrap visíveis (mostrar só o ativo)
-  const activeId = canvasId.replace('cvs_','cv_');
-  clone.querySelectorAll('.ch-wrap').forEach(el=>{
-    el.style.display = el.id === activeId ? 'block' : 'none';
-  });
-
-  // Forçar tamanho do card para ocupar mais espaço
-  clone.style.cssText = 'width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:none;border:none';
-  // Aumentar altura do canvas
-  clone.querySelectorAll('.ch-wrap').forEach(el=>{
-    if(el.style.display !== 'none') el.style.height = '280px';
-  });
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:20px;display:inline-block';
-  wrap.appendChild(clone);
-  document.body.appendChild(wrap);
-
-  // Copiar e redesenhar canvas ativo no tamanho maior
-  const origCv  = canvas;
-  const cloneCv = clone.querySelector(`canvas#${canvasId}`);
-  if(cloneCv && origCv){
-    // Desenhar em tamanho maior
-    const newW = 560 * 2, newH = 280 * 2;
-    cloneCv.width  = newW;
-    cloneCv.height = newH;
-    cloneCv.style.width  = '560px';
-    cloneCv.style.height = '280px';
-    // Redesenhar usando a função registrada
-    if(origCv._drawFn){
-      // Temporariamente trocar tamanho do canvas original para redesenho
-      const savedW = origCv.width, savedH = origCv.height;
-      const savedSW = origCv.style.width, savedSH = origCv.style.height;
-      origCv.width = newW; origCv.height = newH;
-      origCv.style.width = '560px'; origCv.style.height = '280px';
-      origCv._drawFn();
-      cloneCv.getContext('2d').drawImage(origCv, 0, 0);
-      // Restaurar
-      origCv.width = savedW; origCv.height = savedH;
-      origCv.style.width = savedSW; origCv.style.height = savedSH;
-      origCv._drawFn();
-    } else {
-      cloneCv.getContext('2d').drawImage(origCv, 0, 0, newW, newH);
-    }
+  // Redesenhar o canvas ativo em alta resolução antes de capturar
+  if(canvas._drawFn){
+    const dpr = window.devicePixelRatio || 1;
+    const scale = 4; // alta resolução
+    const W = card.clientWidth || 400;
+    const H = 220;
+    canvas.width  = W * scale;
+    canvas.height = H * scale;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.getContext('2d').scale(scale, scale);
+    canvas._drawFn();
   }
 
-  html2canvas(wrap, {
+  // Capturar o card diretamente (sem clonar) em escala alta
+  html2canvas(card, {
     backgroundColor: '#ffffff',
-    scale: 3,
+    scale: 4,
     useCORS: true,
     logging: false,
+    ignoreElements: el => el.classList.contains('btn-download-chart') || el.classList.contains('cc-tabs'),
   }).then(result => {
-    document.body.removeChild(wrap);
+    // Restaurar canvas ao tamanho normal
+    if(canvas._drawFn){
+      const dpr = window.devicePixelRatio || 1;
+      const W = card.clientWidth || 400;
+      const H = 175;
+      canvas.width  = W * dpr;
+      canvas.height = H * dpr;
+      canvas.style.width  = W + 'px';
+      canvas.style.height = H + 'px';
+      canvas._drawFn();
+    }
     const link = document.createElement('a');
     link.download = `Laghetto_${nome.replace(/[^a-zA-Z0-9]/g,'_')}_${mes}_2026.png`;
     link.href = result.toDataURL('image/png');
     link.click();
   }).catch(err => {
-    document.body.removeChild(wrap);
     console.error('html2canvas error:', err);
     alert('Erro ao gerar imagem.');
   });
