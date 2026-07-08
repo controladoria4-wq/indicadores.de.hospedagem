@@ -166,9 +166,9 @@ canvas{display:block}
 .comp-table{width:100%;border-collapse:collapse;font-family:"Source Sans Pro",sans-serif;font-size:12px;white-space:nowrap}
 .comp-table thead tr.ct-h1 th{background:var(--ve);color:#fff;font-family:"Inter",sans-serif;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;padding:10px 12px;text-align:center;border-bottom:2px solid var(--vm)}
 .comp-table thead tr.ct-h1 th:first-child{text-align:left;background:var(--vm)}
-.comp-table thead tr.ct-h2 th{background:#f8fbfc;color:var(--muted);font-family:"Inter",sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 12px;text-align:right;border-bottom:2px solid var(--border)}
+.comp-table thead tr.ct-h2 th{background:#f8fbfc;color:var(--muted);font-family:"Inter",sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 12px;text-align:center;border-bottom:2px solid var(--border)}
 .comp-table thead tr.ct-h2 th:first-child{text-align:left}
-.comp-table thead tr.ct-h2 .th-var{background:#edf7f2;color:var(--green)}
+.comp-table thead tr.ct-h2 .th-var{background:#edf7f2;color:var(--green);text-align:center}
 .comp-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:right;color:var(--text)}
 .comp-table tbody td:first-child{text-align:left;font-weight:700;color:var(--ve);font-family:"Inter",sans-serif}
 .comp-table tbody tr:nth-child(even) td{background:#fafcfd}
@@ -1867,36 +1867,37 @@ function downloadChart(canvasId, nome){
 
   const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
 
-  // Clonar card inteiro
+  // Clonar card e remover elementos indesejados
   const clone = card.cloneNode(true);
   clone.querySelectorAll('.btn-download-chart').forEach(b=>b.remove());
+  // Remover abas (MÊS / ACUMULADO / MÊS A MÊS)
+  clone.querySelectorAll('.cc-tabs').forEach(b=>b.remove());
+  // Tornar todos os ch-wrap visíveis (mostrar só o ativo)
+  const activeId = canvasId.replace('cvs_','cv_');
+  clone.querySelectorAll('.ch-wrap').forEach(el=>{
+    el.style.display = el.id === activeId ? 'block' : 'none';
+  });
 
-  // Wrapper com fundo branco
+  // Wrapper limpo com fundo branco e padding
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:0;border-radius:12px;overflow:hidden';
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:16px;border-radius:12px;overflow:hidden;box-shadow:none';
   wrap.appendChild(clone);
   document.body.appendChild(wrap);
 
   // Copiar canvas ativo para clone
-  const cloneChWraps = clone.querySelectorAll('.ch-wrap');
-  const origChWraps  = card.querySelectorAll('.ch-wrap');
-  origChWraps.forEach((orig, idx)=>{
-    const cloneWrap = cloneChWraps[idx];
-    if(!cloneWrap) return;
-    const origCv = orig.querySelector('canvas');
-    const cloneCv = cloneWrap.querySelector('canvas');
-    if(origCv && cloneCv && origCv.width > 0){
-      cloneCv.width  = origCv.width;
-      cloneCv.height = origCv.height;
-      cloneCv.style.width  = origCv.style.width;
-      cloneCv.style.height = origCv.style.height;
-      cloneCv.getContext('2d').drawImage(origCv, 0, 0);
-    }
-  });
+  const origCv  = canvas;
+  const cloneCv = clone.querySelector(`canvas#${canvasId}`);
+  if(cloneCv && origCv && origCv.width > 0){
+    cloneCv.width  = origCv.width;
+    cloneCv.height = origCv.height;
+    cloneCv.style.width  = origCv.style.width;
+    cloneCv.style.height = origCv.style.height;
+    cloneCv.getContext('2d').drawImage(origCv, 0, 0);
+  }
 
   html2canvas(wrap, {
     backgroundColor: '#ffffff',
-    scale: 2,
+    scale: 3,          // escala 3x para maior nitidez
     useCORS: true,
     logging: false,
   }).then(result => {
