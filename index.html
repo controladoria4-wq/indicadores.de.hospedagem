@@ -1744,6 +1744,886 @@ function initComparativo(){
   renderComparativo();
 }
 
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
+// Boot assíncrono com Google Sheets
+document.body.className = 'tab-resumo';
+(async () => {
+  await loadFromSheets();
+  initDrops();
+  syncLbl('emp','lEmp','bEmp');
+  render();
+  addRefreshBtn();
+  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
+})();
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+function exportExcel(){
+  const idxs=fidxs(), mes=S.mes;
+  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
+
+  const mn=MESES[mes];
+  const show2025=S.anosAnt.size>0;
+  const P  = calcMes(idxs, mes);
+  const AC = calcRange(idxs, 1, mes, null);
+
+  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
+  const fn=v=>v==null?'':Math.round(v);
+  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
+  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
+  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
+
+  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
+  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
+  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
+
+  // ── ABA 1: Resumo ──
+  const resumo = [
+    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
+    [''],
+    ['Empreendimentos:', hotelNames],
+    ['Período Mensal:', periodo],
+    ['Período Acumulado:', acumulado],
+    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
+    [''],
+    // Header mensal
+    show2025
+      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
+      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
+  ];
+
+  const indicadores = [
+    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
+    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
+    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
+    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
+    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
+  ];
+
+  indicadores.forEach(r=>{
+    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
+    const row = show2025
+      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
+      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
+         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
+    resumo.push(row);
+  });
+
+  // ── ABA 2: Detalhe por hotel ──
+  const detalhe = [];
+  const hdr = ['Hotel','Praça','Modelo','Regional'];
+  const cols = show2025
+    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
+    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
+  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
+  detalhe.push([...hdr, ...cols, ...cols]);
+
+  idxs.forEach(i=>{
+    const h=DB.hotels[i];
+    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
+    const row=[h.nome, h.praca, h.modelo, h.regional];
+    const addCols=(d)=>{
+      row.push(fp(d.occ[0]), fp(d.occ[1]));
+      if(show2025) row.push(fp(d.occ[2]));
+      row.push(fc(d.dm[0]), fc(d.dm[1]));
+      if(show2025) row.push(fc(d.dm[2]));
+      row.push(fc(d.rev[0]), fc(d.rev[1]));
+      if(show2025) row.push(fc(d.rev[2]));
+      row.push(fc(d.rec[0]), fc(d.rec[1]));
+      if(show2025) row.push(fc(d.rec[2]));
+    };
+    addCols(M); addCols(AC2);
+    detalhe.push(row);
+  });
+
+  // ── Montar workbook ──
+  const wb = XLSX.utils.book_new();
+
+  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
+  ws1['!cols'] = Array(20).fill({wch:16});
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
+  ws2['!cols'] = Array(30).fill({wch:14});
+  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
+
+  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+// ── DOWNLOAD COMO IMAGEM ──
 function downloadComparativo(){
   if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
   const el = document.getElementById('compContent');
@@ -1921,71 +2801,54 @@ function exportExcel(){
 function downloadChart(canvasId, nome){
   const canvas = document.getElementById(canvasId);
   if(!canvas || !canvas._drawData){ alert('Gráfico não encontrado.'); return; }
-
   const card = canvas.closest('.chart-card');
-  const mes  = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
+  const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
   const {labels, orc, r26, r25, fv} = canvas._drawData;
 
-  // 10.77cm x 5.99cm @ 96dpi x2 para nitidez
+  // Canvas de exportação: 814x452px (10.77cm x 5.99cm @96dpi)
   const W = 814, H = 452;
   const exp = document.createElement('canvas');
   exp.width = W; exp.height = H;
   const ctx = exp.getContext('2d');
-
-  // Fundo azul claro como na imagem de referência
-  ctx.fillStyle = '#eef4f7';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
 
-  // Card branco com cantos arredondados
-  ctx.fillStyle = '#ffffff';
-  if(ctx.roundRect) ctx.roundRect(0, 0, W, H, 12);
-  else ctx.rect(0, 0, W, H);
-  ctx.fill();
-
   const PAD = 20;
-  const ROW1_Y = 44;  // linha do título
-  const ROW2_Y = 76;  // linha da legenda
-  const GRAPH_Y = 96; // início do gráfico
-  const GH = H - GRAPH_Y - PAD; // altura gráfico ≈ 316px
-  const GW = W - PAD*2;         // largura gráfico ≈ 774px
 
-  // ── ÍCONE ──
-  ctx.font = '22px serif';
-  ctx.fillText('👥', PAD, ROW1_Y);
-
-  // ── TÍTULO ──
+  // Título
   ctx.font = 'bold 18px Inter, Arial, sans-serif';
   ctx.fillStyle = '#0a2d23';
-  ctx.fillText(nome.replace(/_/g,' '), PAD + 34, ROW1_Y);
+  ctx.fillText(nome.replace(/_/g,' '), PAD + 36, 40);
 
-  // ── VARIAÇÃO (canto direito) ──
+  // Ícone
+  ctx.fillStyle = '#e8f4f0';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(PAD, 14, 30, 30, 6) : ctx.rect(PAD, 14, 30, 30);
+  ctx.fill();
+
+  // Variações
   if(card){
-    const varRows = card.querySelectorAll('.cch-var-row');
-    let vx = W - PAD, vy = ROW1_Y - 14;
-    varRows.forEach(row=>{
+    let vy = 28;
+    card.querySelectorAll('.cch-var-row').forEach(row=>{
       const lbl = row.querySelector('.cch-var-lbl');
       const val = row.querySelector('.cch-var');
       if(!lbl||!val) return;
-      const isPos = val.classList.contains('pos');
-      const isNeg = val.classList.contains('neg');
-      const color = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
-      ctx.textAlign = 'right';
+      const isPos = val.classList.contains('pos'), isNeg = val.classList.contains('neg');
       ctx.font = 'bold 10px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#8a9fa8';
-      ctx.fillText(lbl.textContent.toUpperCase(), vx - 86, vy);
-      ctx.font = 'bold 16px Inter, Arial, sans-serif';
-      ctx.fillStyle = color;
-      ctx.fillText(val.textContent, vx, vy);
+      ctx.fillStyle = '#8a9fa8'; ctx.textAlign = 'right';
+      ctx.fillText(lbl.textContent.toUpperCase(), W - 100, vy);
+      ctx.font = 'bold 15px Inter, Arial, sans-serif';
+      ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
+      ctx.fillText(val.textContent, W - PAD, vy);
       vy += 22;
     });
     ctx.textAlign = 'left';
   }
 
-  // ── LEGENDA ──
+  // Legenda
   if(card){
-    const items = card.querySelectorAll('.cl-item');
-    let lx = PAD, ly = ROW2_Y;
-    items.forEach(item=>{
+    let lx = PAD, ly = 68;
+    card.querySelectorAll('.cl-item').forEach(item=>{
       const dot = item.querySelector('.cl-dot');
       const txt = item.textContent.trim();
       if(!dot) return;
@@ -1994,276 +2857,15 @@ function downloadChart(canvasId, nome){
       ctx.font = '11px Inter, Arial, sans-serif';
       ctx.fillStyle = '#4a6a6e';
       ctx.fillText(txt, lx+14, ly);
-      lx += ctx.measureText(txt).width + 38;
+      lx += ctx.measureText(txt).width + 32;
     });
   }
 
-  // ── GRÁFICO em canvas temporário com dimensões exatas ──
+  // Gráfico: ocupa o restante da imagem
+  const GY = 82, GW = W - PAD*2, GH = H - GY - PAD;
   const tmp = document.createElement('canvas');
   drawBarsAt(tmp, labels, orc, r26, r25, fv, GW, GH);
-  ctx.drawImage(tmp, PAD, GRAPH_Y, GW, GH);
-
-  // Salvar
-  const link = document.createElement('a');
-  link.download = 'Laghetto_' + nome.replace(/[^a-zA-Z0-9]/g,'_') + '_' + mes + '_2026.png';
-  link.href = exp.toDataURL('image/png');
-  link.click();
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  const canvas = document.getElementById(canvasId);
-  if(!canvas || !canvas._drawData){ alert('Gráfico não encontrado.'); return; }
-
-  const card = canvas.closest('.chart-card');
-  const mes  = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-  const {labels, orc, r26, r25, fv} = canvas._drawData;
-
-  // Dimensões: 10.77cm x 5.99cm @ 96dpi x2
-  const W = 814, H = 452;
-  const PAD = 24, HEADER_H = 86, LEGEND_H = 30;
-  const GW = W - PAD*2, GH = H - HEADER_H - LEGEND_H - PAD;
-
-  const exp = document.createElement('canvas');
-  exp.width = W; exp.height = H;
-  const ctx = exp.getContext('2d');
-
-  // Fundo branco
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
-  // Título
-  ctx.font = 'bold 20px Inter, Arial, sans-serif';
-  ctx.fillStyle = '#0a2d23';
-  ctx.fillText(nome.replace(/_/g,' '), PAD + 44, 40);
-
-  // Ícone
-  ctx.fillStyle = '#e8f4f0';
-  ctx.beginPath();
-  if(ctx.roundRect) ctx.roundRect(PAD, 14, 36, 36, 8);
-  else ctx.rect(PAD, 14, 36, 36);
-  ctx.fill();
-
-  // Variações
-  if(card){
-    const varRows = card.querySelectorAll('.cch-var-row');
-    let vy = 28;
-    varRows.forEach(row=>{
-      const lbl = row.querySelector('.cch-var-lbl');
-      const val = row.querySelector('.cch-var');
-      if(!lbl||!val) return;
-      const isPos = val.classList.contains('pos');
-      const isNeg = val.classList.contains('neg');
-      ctx.font = 'bold 10px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#8a9fa8'; ctx.textAlign = 'right';
-      ctx.fillText(lbl.textContent.toUpperCase(), W - 130, vy);
-      ctx.font = 'bold 16px Inter, Arial, sans-serif';
-      ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
-      ctx.fillText(val.textContent, W - PAD, vy);
-      vy += 26;
-    });
-    ctx.textAlign = 'left';
-  }
-
-  // Linha divisória
-  ctx.strokeStyle = '#d4e2e8'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(PAD, HEADER_H - 10); ctx.lineTo(W-PAD, HEADER_H - 10); ctx.stroke();
-
-  // Legenda
-  if(card){
-    const items = card.querySelectorAll('.cl-item');
-    let lx = PAD, ly = HEADER_H + 18;
-    items.forEach(item=>{
-      const dot = item.querySelector('.cl-dot');
-      const txt = item.textContent.trim();
-      if(!dot) return;
-      ctx.fillStyle = dot.style.background || '#ccc';
-      ctx.beginPath(); ctx.arc(lx+7, ly-5, 6, 0, Math.PI*2); ctx.fill();
-      ctx.font = '11px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#4a6a6e';
-      ctx.fillText(txt, lx+18, ly);
-      lx += ctx.measureText(txt).width + 36;
-    });
-  }
-
-  // Desenhar gráfico em canvas temporário com tamanho exato
-  const tmpCanvas = document.createElement('canvas');
-  drawBarsAt(tmpCanvas, labels, orc, r26, r25, fv, GW, GH);
-  ctx.drawImage(tmpCanvas, PAD, HEADER_H + LEGEND_H, GW, GH);
+  ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, PAD, GY, GW, GH);
 
   const link = document.createElement('a');
   link.download = 'Laghetto_' + nome.replace(/[^a-zA-Z0-9]/g,'_') + '_' + mes + '_2026.png';
@@ -2271,1829 +2873,6 @@ function downloadChart(canvasId, nome){
   link.click();
 }
 
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  const canvas = document.getElementById(canvasId);
-  if(!canvas || !canvas._drawFn){ alert('Gráfico não encontrado.'); return; }
-
-  const card = canvas.closest('.chart-card');
-  const mes  = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-
-  // 10.77cm x 5.99cm @ 96dpi x2
-  const W = 814, H = 452;
-  const PAD = 20;
-  const HEADER_H = 80;   // espaço para título + variações
-  const LEGEND_H = 28;   // espaço para legenda
-  const GH = H - HEADER_H - LEGEND_H - PAD; // altura disponível para o gráfico
-  const GW = W - PAD * 2;
-
-  const exp = document.createElement('canvas');
-  exp.width = W; exp.height = H;
-  const ctx = exp.getContext('2d');
-
-  // Fundo branco
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
-  // ── HEADER: título ──
-  ctx.font = 'bold 20px Inter, Arial, sans-serif';
-  ctx.fillStyle = '#0a2d23';
-  ctx.fillText(nome.replace(/_/g,' '), PAD, 38);
-
-  // ── VARIAÇÕES (direita, alinhadas ao topo) ──
-  if(card){
-    const varRows = card.querySelectorAll('.cch-var-row');
-    let vy = 26;
-    varRows.forEach(row=>{
-      const lbl = row.querySelector('.cch-var-lbl');
-      const val = row.querySelector('.cch-var');
-      if(!lbl||!val) return;
-      const isPos = val.classList.contains('pos');
-      const isNeg = val.classList.contains('neg');
-      ctx.font = 'bold 10px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#8a9fa8';
-      ctx.textAlign = 'right';
-      ctx.fillText(lbl.textContent.toUpperCase(), W - 130, vy);
-      ctx.font = 'bold 16px Inter, Arial, sans-serif';
-      ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
-      ctx.fillText(val.textContent, W - PAD, vy);
-      vy += 24;
-    });
-    ctx.textAlign = 'left';
-  }
-
-  // Linha divisória
-  ctx.strokeStyle = '#d4e2e8';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD, HEADER_H - 8);
-  ctx.lineTo(W - PAD, HEADER_H - 8);
-  ctx.stroke();
-
-  // ── LEGENDA ──
-  if(card){
-    const items = card.querySelectorAll('.cl-item');
-    let lx = PAD, ly = HEADER_H + 16;
-    items.forEach(item=>{
-      const dot = item.querySelector('.cl-dot');
-      const txt = item.textContent.trim();
-      if(!dot) return;
-      ctx.fillStyle = dot.style.background || '#ccc';
-      ctx.beginPath(); ctx.arc(lx+6, ly-5, 6, 0, Math.PI*2); ctx.fill();
-      ctx.font = '11px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#4a6a6e';
-      ctx.fillText(txt, lx+16, ly);
-      lx += ctx.measureText(txt).width + 36;
-    });
-  }
-
-  // ── GRÁFICO: redesenhar em tamanho máximo ──
-  const GRAPH_Y = HEADER_H + LEGEND_H + 4;
-  const savedW  = canvas.width, savedH  = canvas.height;
-  const savedSW = canvas.style.width, savedSH = canvas.style.height;
-
-  canvas.width  = GW * 2; canvas.height = GH * 2;
-  canvas.style.width  = GW + 'px'; canvas.style.height = GH + 'px';
-  canvas._drawFn();
-
-  ctx.drawImage(canvas, PAD, GRAPH_Y, GW, GH);
-
-  // Restaurar
-  canvas.width  = savedW; canvas.height  = savedH;
-  canvas.style.width = savedSW; canvas.style.height = savedSH;
-  canvas._drawFn();
-
-  const link = document.createElement('a');
-  link.download = 'Laghetto_' + nome.replace(/[^a-zA-Z0-9]/g,'_') + '_' + mes + '_2026.png';
-  link.href = exp.toDataURL('image/png');
-  link.click();
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  const canvas = document.getElementById(canvasId);
-  if(!canvas || !canvas._drawFn){ alert('Gráfico não encontrado.'); return; }
-
-  const card = canvas.closest('.chart-card');
-  const mes  = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-
-  // 10.77cm x 5.99cm @ 96dpi x2 para nitidez
-  const W = 814, H = 452;
-
-  const exp = document.createElement('canvas');
-  exp.width = W; exp.height = H;
-  const ctx = exp.getContext('2d');
-
-  // Fundo branco
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
-  // ── TÍTULO ──
-  ctx.font = 'bold 18px Inter, Arial, sans-serif';
-  ctx.fillStyle = '#0a2d23';
-  ctx.fillText(nome.replace(/_/g,' '), 52, 34);
-
-  // ── ÍCONE ──
-  ctx.fillStyle = '#e8f4f0';
-  ctx.beginPath();
-  if(ctx.roundRect) ctx.roundRect(10, 12, 36, 36, 7);
-  else ctx.rect(10, 12, 36, 36);
-  ctx.fill();
-
-  // ── VARIAÇÕES (canto direito) ──
-  if(card){
-    const varRows = card.querySelectorAll('.cch-var-row');
-    let vy = 24;
-    varRows.forEach(row=>{
-      const lbl = row.querySelector('.cch-var-lbl');
-      const val = row.querySelector('.cch-var');
-      if(!lbl||!val) return;
-      const isPos = val.classList.contains('pos');
-      const isNeg = val.classList.contains('neg');
-      ctx.font = '700 9px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#8a9fa8';
-      ctx.textAlign = 'right';
-      ctx.fillText(lbl.textContent.toUpperCase(), W - 120, vy);
-      ctx.font = 'bold 14px Inter, Arial, sans-serif';
-      ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
-      ctx.fillText(val.textContent, W - 10, vy);
-      vy += 22;
-    });
-  }
-  ctx.textAlign = 'left';
-
-  // ── LEGENDA ──
-  if(card){
-    const items = card.querySelectorAll('.cl-item');
-    let lx = 10, ly = 64;
-    items.forEach(item=>{
-      const dot = item.querySelector('.cl-dot');
-      const txt = item.textContent.trim();
-      if(!dot) return;
-      ctx.fillStyle = dot.style.background || '#ccc';
-      ctx.beginPath(); ctx.arc(lx+5, ly-4, 5, 0, Math.PI*2); ctx.fill();
-      ctx.font = '10px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#6b8a8e';
-      ctx.fillText(txt, lx+14, ly);
-      lx += ctx.measureText(txt).width + 30;
-    });
-  }
-
-  // ── GRÁFICO: redesenhar em tamanho da imagem ──
-  const GW = W, GH = H - 76;
-  const savedW  = canvas.width,  savedH  = canvas.height;
-  const savedSW = canvas.style.width, savedSH = canvas.style.height;
-
-  canvas.width  = GW * 2; canvas.height = GH * 2;
-  canvas.style.width = GW + 'px'; canvas.style.height = GH + 'px';
-  canvas._drawFn();
-
-  ctx.drawImage(canvas, 0, 76, GW, GH);
-
-  // Restaurar
-  canvas.width  = savedW;  canvas.height  = savedH;
-  canvas.style.width = savedSW; canvas.style.height = savedSH;
-  canvas._drawFn();
-
-  const link = document.createElement('a');
-  link.download = 'Laghetto_' + nome.replace(/[^a-zA-Z0-9]/g,'_') + '_' + mes + '_2026.png';
-  link.href = exp.toDataURL('image/png');
-  link.click();
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  const canvas = document.getElementById(canvasId);
-  if(!canvas || !canvas._drawFn){ alert('Gráfico não encontrado.'); return; }
-
-  const card  = canvas.closest('.chart-card');
-  const mes   = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-
-  // Dimensões finais da imagem exportada
-  const W = 1040, H = 600;
-
-  // Canvas de exportação
-  const exp = document.createElement('canvas');
-  exp.width = W; exp.height = H;
-  const ctx = exp.getContext('2d');
-
-  // Fundo branco
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, W, H);
-
-  // ── TÍTULO ──
-  ctx.font = 'bold 28px Inter, Arial, sans-serif';
-  ctx.fillStyle = '#0a2d23';
-  ctx.fillText(nome.replace(/_/g,' '), 80, 56);
-
-  // ── ÍCONE (retângulo arredondado) ──
-  ctx.fillStyle = '#e8f4f0';
-  ctx.beginPath();
-  ctx.roundRect(16, 20, 52, 52, 10);
-  ctx.fill();
-
-  // ── VARIAÇÕES (canto direito) ──
-  if(card){
-    const varRows = card.querySelectorAll('.cch-var-row');
-    let vy = 38;
-    varRows.forEach(row=>{
-      const lbl = row.querySelector('.cch-var-lbl');
-      const val = row.querySelector('.cch-var');
-      if(!lbl||!val) return;
-      const isPos = val.classList.contains('pos');
-      const isNeg = val.classList.contains('neg');
-      ctx.font = '700 13px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#8a9fa8';
-      ctx.textAlign = 'right';
-      ctx.fillText(lbl.textContent.toUpperCase(), W - 200, vy);
-      ctx.font = 'bold 22px Inter, Arial, sans-serif';
-      ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
-      ctx.fillText(val.textContent, W - 20, vy);
-      vy += 34;
-    });
-  }
-  ctx.textAlign = 'left';
-
-  // ── LEGENDA ──
-  if(card){
-    const items = card.querySelectorAll('.cl-item');
-    let lx = 16, ly = 108;
-    items.forEach(item=>{
-      const dot = item.querySelector('.cl-dot');
-      const txt = item.textContent.trim();
-      if(!dot) return;
-      ctx.fillStyle = dot.style.background || '#ccc';
-      ctx.beginPath(); ctx.arc(lx+8, ly-6, 8, 0, Math.PI*2); ctx.fill();
-      ctx.font = '14px Inter, Arial, sans-serif';
-      ctx.fillStyle = '#6b8a8e';
-      ctx.fillText(txt, lx+22, ly);
-      lx += ctx.measureText(txt).width + 52;
-    });
-  }
-
-  // ── GRÁFICO: redesenhar em tamanho grande ──
-  const GW = W, GH = H - 140;
-  const savedW  = canvas.width,  savedH  = canvas.height;
-  const savedSW = canvas.style.width, savedSH = canvas.style.height;
-
-  canvas.width  = GW * 2; canvas.height = GH * 2;
-  canvas.style.width  = GW + 'px'; canvas.style.height = GH + 'px';
-  canvas._drawFn();
-
-  // Copiar para canvas de exportação
-  ctx.drawImage(canvas, 0, 128, GW, GH);
-
-  // Restaurar canvas original
-  canvas.width  = savedW;  canvas.height  = savedH;
-  canvas.style.width = savedSW; canvas.style.height = savedSH;
-  canvas._drawFn();
-
-  // Salvar
-  const link = document.createElement('a');
-  link.download = 'Laghetto_' + nome.replace(/[^a-zA-Z0-9]/g,'_') + '_' + mes + '_2026.png';
-  link.href = exp.toDataURL('image/png');
-  link.click();
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-
-  const canvas = document.getElementById(canvasId);
-  if(!canvas){ alert('Gráfico não encontrado.'); return; }
-  const card = canvas.closest('.chart-card');
-  if(!card){ alert('Card não encontrado.'); return; }
-
-  const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-
-  // Guardar estilos originais do card
-  const origCardStyle    = card.getAttribute('style') || '';
-  const origCanvasW      = canvas.width;
-  const origCanvasH      = canvas.height;
-  const origCanvasSW     = canvas.style.width;
-  const origCanvasSH     = canvas.style.height;
-  const origChWrap       = canvas.closest('.ch-wrap');
-  const origChWrapH      = origChWrap ? origChWrap.style.height : '';
-
-  // Expandir card para tamanho de exportação
-  const EXP_W = 700, EXP_H = 320;
-  card.style.width  = EXP_W + 'px';
-  card.style.minWidth = EXP_W + 'px';
-  if(origChWrap) origChWrap.style.height = EXP_H + 'px';
-
-  // Esconder botão download e abas
-  card.querySelectorAll('.btn-download-chart, .cc-tabs').forEach(el => el.style.visibility = 'hidden');
-
-  // Redesenhar canvas no novo tamanho
-  if(canvas._drawFn){
-    canvas.width  = EXP_W * 2;
-    canvas.height = EXP_H * 2;
-    canvas.style.width  = EXP_W + 'px';
-    canvas.style.height = EXP_H + 'px';
-    canvas._drawFn();
-  }
-
-  // Pequeno delay para o layout se ajustar
-  setTimeout(()=>{
-    html2canvas(card, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      width: EXP_W,
-      windowWidth: EXP_W + 40,
-    }).then(result => {
-      // Restaurar tudo
-      card.setAttribute('style', origCardStyle);
-      if(origChWrap) origChWrap.style.height = origChWrapH;
-      card.querySelectorAll('.btn-download-chart, .cc-tabs').forEach(el => el.style.visibility = '');
-      canvas.width = origCanvasW; canvas.height = origCanvasH;
-      canvas.style.width = origCanvasSW; canvas.style.height = origCanvasSH;
-      if(canvas._drawFn) canvas._drawFn();
-
-      const link = document.createElement('a');
-      link.download = `Laghetto_${nome.replace(/[^a-zA-Z0-9]/g,'_')}_${mes}_2026.png`;
-      link.href = result.toDataURL('image/png');
-      link.click();
-    }).catch(err => {
-      card.setAttribute('style', origCardStyle);
-      if(origChWrap) origChWrap.style.height = origChWrapH;
-      card.querySelectorAll('.btn-download-chart, .cc-tabs').forEach(el => el.style.visibility = '');
-      canvas.width = origCanvasW; canvas.height = origCanvasH;
-      canvas.style.width = origCanvasSW; canvas.style.height = origCanvasSH;
-      if(canvas._drawFn) canvas._drawFn();
-      console.error(err);
-      alert('Erro ao gerar imagem.');
-    });
-  }, 100);
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-
-  const canvas = document.getElementById(canvasId);
-  if(!canvas){ alert('Gráfico não encontrado.'); return; }
-  const card = canvas.closest('.chart-card');
-  if(!card){ alert('Card não encontrado.'); return; }
-
-  const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-
-  // Clonar card inteiro
-  const clone = card.cloneNode(true);
-  clone.querySelectorAll('.btn-download-chart').forEach(b=>b.remove());
-  clone.querySelectorAll('.cc-tabs').forEach(b=>b.remove());
-
-  // Mostrar só o ch-wrap ativo
-  const activeId = canvasId.replace('cvs_','cv_');
-  clone.querySelectorAll('.ch-wrap').forEach(el=>{
-    el.style.display = (el.id === activeId) ? 'block' : 'none';
-    if(el.id === activeId) el.style.height = '220px';
-  });
-
-  // Tamanho fixo do card exportado
-  clone.style.cssText = `
-    width: 520px;
-    background: #fff;
-    border-radius: 14px;
-    overflow: hidden;
-    border: 1.5px solid #d4e2e8;
-    box-sizing: border-box;
-    font-family: Inter, sans-serif;
-  `;
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;padding:0;background:#fff';
-  wrap.appendChild(clone);
-  document.body.appendChild(wrap);
-
-  // Copiar canvas ativo para o clone
-  const origCv = canvas;
-  const cloneCv = clone.querySelector('canvas#' + canvasId);
-  if(cloneCv && origCv && origCv._drawFn){
-    const W = 520 - 2, H = 220;
-    cloneCv.width  = W * 2; cloneCv.height = H * 2;
-    cloneCv.style.width  = W + 'px'; cloneCv.style.height = H + 'px';
-    // Redesenhar no tamanho do clone
-    const savedW = origCv.width, savedH = origCv.height;
-    const savedSW = origCv.style.width, savedSH = origCv.style.height;
-    origCv.width = W*2; origCv.height = H*2;
-    origCv.style.width = W+'px'; origCv.style.height = H+'px';
-    origCv._drawFn();
-    cloneCv.getContext('2d').drawImage(origCv, 0, 0);
-    origCv.width = savedW; origCv.height = savedH;
-    origCv.style.width = savedSW; origCv.style.height = savedSH;
-    origCv._drawFn();
-  }
-
-  html2canvas(wrap, {
-    backgroundColor: '#ffffff',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: 520,
-    windowWidth: 600,
-  }).then(result => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_${nome.replace(/[^a-zA-Z0-9]/g,'_')}_${mes}_2026.png`;
-    link.href = result.toDataURL('image/png');
-    link.click();
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    alert('Erro ao gerar imagem.');
-  });
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  const canvas = document.getElementById(canvasId);
-  if(!canvas || !canvas._drawFn){ alert('Gráfico não encontrado.'); return; }
-
-  const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-  const card = canvas.closest('.chart-card');
-
-  // Criar canvas de exportação em alta resolução
-  const EW = 900, EH = 500;
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width  = EW * 2;
-  exportCanvas.height = EH * 2;
-  const ctx = exportCanvas.getContext('2d');
-  ctx.scale(2, 2);
-
-  // Fundo branco
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, EW, EH);
-
-  // ── HEADER: título + ícone ──
-  ctx.font = 'bold 22px Inter, sans-serif';
-  ctx.fillStyle = '#0a2d23';
-  ctx.fillText(nome.replace(/_/g,' ').toUpperCase(), 64, 44);
-
-  // Ícone placeholder (círculo colorido)
-  ctx.fillStyle = card ? getComputedStyle(card).borderTopColor || '#0a2d23' : '#0a2d23';
-  ctx.beginPath(); ctx.arc(36, 36, 18, 0, Math.PI*2); ctx.fill();
-
-  // ── VARIAÇÕES ──
-  const varEls = card ? card.querySelectorAll('.cch-var-row') : [];
-  let varY = 28;
-  varEls.forEach(row => {
-    const lbl = row.querySelector('.cch-var-lbl');
-    const val = row.querySelector('.cch-var');
-    if(!lbl || !val) return;
-    const isPos = val.classList.contains('pos');
-    const isNeg = val.classList.contains('neg');
-    ctx.font = 'bold 11px Inter, sans-serif';
-    ctx.fillStyle = '#8a9fa8';
-    ctx.textAlign = 'right';
-    ctx.fillText(lbl.textContent.toUpperCase(), EW - 150, varY);
-    ctx.font = 'bold 18px Inter, sans-serif';
-    ctx.fillStyle = isPos ? '#1a6b50' : isNeg ? '#b03030' : '#8a9fa8';
-    ctx.fillText(val.textContent, EW - 20, varY);
-    varY += 26;
-  });
-  ctx.textAlign = 'left';
-
-  // ── LEGENDA ──
-  const legEls = card ? card.querySelectorAll('.cl-item') : [];
-  let legX = 16, legY = 78;
-  legEls.forEach(item => {
-    const dot = item.querySelector('.cl-dot');
-    const txt = item.textContent.trim();
-    if(!dot) return;
-    const dotColor = dot.style.background;
-    ctx.fillStyle = dotColor;
-    ctx.beginPath(); ctx.arc(legX + 6, legY - 5, 7, 0, Math.PI*2); ctx.fill();
-    ctx.font = '13px Inter, sans-serif';
-    ctx.fillStyle = '#6b8a8e';
-    ctx.fillText(txt, legX + 18, legY);
-    legX += ctx.measureText(txt).width + 42;
-  });
-
-  // ── GRÁFICO ──
-  // Redesenhar canvas original em tamanho grande temporariamente
-  const origW = canvas.width, origH = canvas.height;
-  const origSW = canvas.style.width, origSH = canvas.style.height;
-  const GW = EW, GH = EH - 100;
-  canvas.width  = GW * 2; canvas.height = GH * 2;
-  canvas.style.width  = GW + 'px'; canvas.style.height  = GH + 'px';
-  canvas._drawFn();
-
-  // Copiar para canvas de exportação
-  ctx.drawImage(canvas, 0, 100, GW, GH);
-
-  // Restaurar
-  canvas.width = origW; canvas.height = origH;
-  canvas.style.width = origSW; canvas.style.height = origSH;
-  canvas._drawFn();
-
-  // Salvar
-  const link = document.createElement('a');
-  link.download = `Laghetto_${nome.replace(/[^a-zA-Z0-9]/g,'_')}_${mes}_2026.png`;
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
-}
-
-
-function downloadComparativo(){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-  const el = document.getElementById('compContent');
-  if(!el || !el.innerHTML.trim()){ alert('Sem dados para exportar. Aplique os filtros primeiro.'); return; }
-
-  const btn = document.querySelector('#view-comparativo .btn-download-table');
-  btn.innerHTML = '⏳ Gerando...'; btn.disabled = true;
-
-  // Header
-  const mes = [...compMeses].sort((a,b)=>a-b);
-  const MESES_N2 = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const mesLabel = mes.length===1 ? MESES_N2[mes[0]] : MESES_N2[mes[0]]+' – '+MESES_N2[mes[mes.length-1]];
-  const modoLabel = compMode==='individual'?'Hotel Individual':compMode==='regional'?'Por Regional':
-                    compMode==='praca'?'Por Praça':compMode==='resumo_regional'?'Resumo Regional':'Resumo Praça';
-
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;background:#f0f5fa;padding:20px 24px;font-family:Inter,sans-serif;width:'+(el.scrollWidth+48)+'px';
-
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px';
-  header.innerHTML = `
-    <div style="font-family:Inter,sans-serif;font-size:18px;font-weight:900;color:#0a2d23;letter-spacing:-0.5px">
-      Laghetto <span style="font-weight:300;color:#2a606a">Hotéis</span>
-    </div>
-    <div style="font-size:11px;color:#6b8a8e;font-weight:700;text-transform:uppercase;letter-spacing:1px">
-      Comparativo · ${modoLabel} · ${mesLabel} ${compAno}
-    </div>`;
-  wrap.appendChild(header);
-
-  const hr = document.createElement('div');
-  hr.style.cssText = 'height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px;border-radius:1px';
-  wrap.appendChild(hr);
-
-  const content = el.cloneNode(true);
-  wrap.appendChild(content);
-
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
-
-  document.body.appendChild(wrap);
-
-  html2canvas(wrap, {
-    backgroundColor: '#f0f5fa',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    width: wrap.scrollWidth,
-    windowWidth: wrap.scrollWidth + 100,
-  }).then(canvas => {
-    document.body.removeChild(wrap);
-    const link = document.createElement('a');
-    link.download = `Laghetto_Comparativo_${mesLabel.replace(/\s/g,'')}_${compAno}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  }).catch(err => {
-    document.body.removeChild(wrap);
-    console.error(err);
-    btn.innerHTML = '📷 Salvar como imagem'; btn.disabled = false;
-  });
-}
-
-// Boot assíncrono com Google Sheets
-document.body.className = 'tab-resumo';
-(async () => {
-  await loadFromSheets();
-  initDrops();
-  syncLbl('emp','lEmp','bEmp');
-  render();
-  addRefreshBtn();
-  setTimeout(()=>{ initResumoSelect(); renderResumo(); }, 50);
-})();
-
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script>
-function exportExcel(){
-  const idxs=fidxs(), mes=S.mes;
-  if(!idxs.length){ alert('Selecione ao menos um empreendimento antes de exportar.'); return; }
-
-  const mn=MESES[mes];
-  const show2025=S.anosAnt.size>0;
-  const P  = calcMes(idxs, mes);
-  const AC = calcRange(idxs, 1, mes, null);
-
-  const fp=v=>v==null?'':(v*100).toFixed(1)+'%';
-  const fn=v=>v==null?'':Math.round(v);
-  const fc=v=>v==null?'':parseFloat(v.toFixed(2));
-  const fca=v=>v==null?'':parseFloat((v/1e6).toFixed(4));
-  const pct=(a,b)=>{ if(a==null||b==null||a===0) return ''; return parseFloat(((b-a)/Math.abs(a)*100).toFixed(1)); };
-
-  const hotelNames = idxs.map(i=>DB.hotels[i].nome).join(', ');
-  const periodo = mes===1 ? 'Janeiro 2026' : mn+' 2026';
-  const acumulado = mes===1 ? 'Janeiro 2026' : 'Jan–'+mn+' 2026';
-
-  // ── ABA 1: Resumo ──
-  const resumo = [
-    ['DASHBOARD DE INDICADORES HOTELEIROS — LAGHETTO'],
-    [''],
-    ['Empreendimentos:', hotelNames],
-    ['Período Mensal:', periodo],
-    ['Período Acumulado:', acumulado],
-    ['Ano Anterior:', show2025 ? '2025' : 'Não exibido'],
-    [''],
-    // Header mensal
-    show2025
-      ? ['INDICADOR','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025',  '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','REAL. 2025','VAR% ORÇ','VAR% 2025']
-      : ['INDICADOR','ORÇADO 2026','REAL. 2026','VAR% ORÇ', '', 'ACUMULADO','ORÇADO 2026','REAL. 2026','VAR% ORÇ'],
-  ];
-
-  const indicadores = [
-    {lbl:'Ocupação',             p:P.occ, a:AC.occ, fmt:fp,  isOcc:true},
-    {lbl:'Diárias Vendidas',     p:P.dia, a:AC.dia, fmt:fn},
-    {lbl:'Diária Média (R$)',    p:P.dm,  a:AC.dm,  fmt:fc},
-    {lbl:'RevPAR (R$)',          p:P.rev, a:AC.rev, fmt:fc},
-    {lbl:'Receita Hospedagem (R$)', p:P.rec, a:AC.rec, fmt:fc},
-  ];
-
-  indicadores.forEach(r=>{
-    const [po,pr6,pr5]=r.p, [ao,ar6,ar5]=r.a;
-    const row = show2025
-      ? [r.lbl, r.fmt(po), r.fmt(pr6), r.fmt(pr5), pct(po,pr6), pct(pr5,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), r.fmt(ar5), pct(ao,ar6), pct(ar5,ar6)]
-      : [r.lbl, r.fmt(po), r.fmt(pr6), pct(po,pr6), '',
-         acumulado, r.fmt(ao), r.fmt(ar6), pct(ao,ar6)];
-    resumo.push(row);
-  });
-
-  // ── ABA 2: Detalhe por hotel ──
-  const detalhe = [];
-  const hdr = ['Hotel','Praça','Modelo','Regional'];
-  const cols = show2025
-    ? ['Orc.Occ','Real.Occ26','Real.Occ25','Orc.DM','Real.DM26','Real.DM25','Orc.RevPAR','Real.RevPAR26','Real.RevPAR25','Orc.Rec','Real.Rec26','Real.Rec25']
-    : ['Orc.Occ','Real.Occ26','Orc.DM','Real.DM26','Orc.RevPAR','Real.RevPAR26','Orc.Rec','Real.Rec26'];
-  detalhe.push([...hdr, `MENSAL ${mn} 2026`, ...cols.map(x=>''), `ACUMULADO Jan–${mn} 2026`]);
-  detalhe.push([...hdr, ...cols, ...cols]);
-
-  idxs.forEach(i=>{
-    const h=DB.hotels[i];
-    const M=calcMes([i],mes), AC2=calcRange([i],1,mes,null);
-    const row=[h.nome, h.praca, h.modelo, h.regional];
-    const addCols=(d)=>{
-      row.push(fp(d.occ[0]), fp(d.occ[1]));
-      if(show2025) row.push(fp(d.occ[2]));
-      row.push(fc(d.dm[0]), fc(d.dm[1]));
-      if(show2025) row.push(fc(d.dm[2]));
-      row.push(fc(d.rev[0]), fc(d.rev[1]));
-      if(show2025) row.push(fc(d.rev[2]));
-      row.push(fc(d.rec[0]), fc(d.rec[1]));
-      if(show2025) row.push(fc(d.rec[2]));
-    };
-    addCols(M); addCols(AC2);
-    detalhe.push(row);
-  });
-
-  // ── Montar workbook ──
-  const wb = XLSX.utils.book_new();
-
-  const ws1 = XLSX.utils.aoa_to_sheet(resumo);
-  ws1['!cols'] = Array(20).fill({wch:16});
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  const ws2 = XLSX.utils.aoa_to_sheet(detalhe);
-  ws2['!cols'] = Array(30).fill({wch:14});
-  XLSX.utils.book_append_sheet(wb, ws2, 'Detalhe por Hotel');
-
-  const fname = `Laghetto_Indicadores_${mn.replace('ç','c').replace('ã','a')}_2026.xlsx`;
-  XLSX.writeFile(wb, fname);
-}
-
-// ── DOWNLOAD COMO IMAGEM ──
-function downloadChart(canvasId, nome){
-  if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
-
-  const canvas = document.getElementById(canvasId);
-  if(!canvas){ alert('Gráfico não encontrado.'); return; }
-  const card = canvas.closest('.chart-card');
-  if(!card){ alert('Card não encontrado.'); return; }
-
-  const mes = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][S.mes] || '';
-
-  // Criar um canvas standalone em alta resolução
-  const EXPORT_W = 800, EXPORT_H = 400;
-  const SCALE = 3;
-
-  // Redesenhar em tamanho maior temporariamente
-  if(canvas._drawFn){
-    canvas.width  = EXPORT_W * SCALE;
-    canvas.height = EXPORT_H * SCALE;
-    canvas.style.width  = EXPORT_W + 'px';
-    canvas.style.height = EXPORT_H + 'px';
-    canvas._drawFn();
-  }
-
-  // Criar imagem final combinando header do card + canvas grande
-  const finalCanvas = document.createElement('canvas');
-  const HEADER_H = 120 * SCALE; // espaço para título, variações e legenda
-  finalCanvas.width  = EXPORT_W * SCALE;
-  finalCanvas.height = (EXPORT_H + 120) * SCALE;
-  const ctx = finalCanvas.getContext('2d');
-
-  // Fundo branco
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-
-  // Capturar header (título + variações + legenda) via html2canvas
-  const headerEl = card.querySelector('.cc-body') || card;
-  html2canvas(headerEl, {
-    backgroundColor: '#ffffff',
-    scale: SCALE,
-    useCORS: true,
-    logging: false,
-    ignoreElements: el =>
-      el.classList.contains('btn-download-chart') ||
-      el.classList.contains('cc-tabs') ||
-      el.classList.contains('ch-wrap'),
-  }).then(headerCanvas => {
-    // Desenhar header no topo
-    ctx.drawImage(headerCanvas, 0, 0);
-
-    // Desenhar canvas do gráfico abaixo
-    ctx.drawImage(canvas, 0, headerCanvas.height);
-
-    // Restaurar canvas ao tamanho normal
-    if(canvas._drawFn){
-      const dpr = window.devicePixelRatio || 1;
-      const W = card.clientWidth || 400;
-      canvas.width  = W * dpr;
-      canvas.height = 175 * dpr;
-      canvas.style.width  = W + 'px';
-      canvas.style.height = '175px';
-      canvas._drawFn();
-    }
-
-    const link = document.createElement('a');
-    link.download = `Laghetto_${nome.replace(/[^a-zA-Z0-9]/g,'_')}_${mes}_2026.png`;
-    link.href = finalCanvas.toDataURL('image/png');
-    link.click();
-  }).catch(err => {
-    // Restaurar canvas
-    if(canvas._drawFn){
-      const dpr = window.devicePixelRatio || 1;
-      const W = card.clientWidth || 400;
-      canvas.width  = W * dpr; canvas.height = 175 * dpr;
-      canvas.style.width = W+'px'; canvas.style.height = '175px';
-      canvas._drawFn();
-    }
-    console.error('html2canvas error:', err);
-    alert('Erro ao gerar imagem.');
-  });
-}
 
 function downloadTable(){
   if(!window.html2canvas){ alert('Biblioteca de captura não carregada.'); return; }
