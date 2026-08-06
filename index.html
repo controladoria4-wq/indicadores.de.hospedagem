@@ -2452,22 +2452,43 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
 // ── PDF HELPERS ──
 
 function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
+  // Dark header bar
   pdf.setFillColor(2, 42, 34);
-  pdf.rect(0, 0, PW, 18, 'F');
-  pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(255,255,255);
-  pdf.text('Laghetto', MARGIN, 12);
-  pdf.setFont('helvetica','normal'); pdf.setTextColor(180,212,223);
-  pdf.text(' Hotéis', MARGIN+22, 12);
-  pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(255,255,255);
-  pdf.text(titulo.toUpperCase(), PW/2, 12, {align:'center'});
-  pdf.setFontSize(10); pdf.setTextColor(180,212,223);
-  pdf.text(periodoFull.toUpperCase(), PW-MARGIN, 12, {align:'right'});
-  pdf.setDrawColor(180,212,223); pdf.setLineWidth(0.3);
-  pdf.line(MARGIN, 22, PW-MARGIN, 22);
+  pdf.rect(0, 0, PW, 22, 'F');
+
+  // Logo (white version — add as image top-right, small)
+  // Logo dimensions: ~30mm wide x 8mm tall
+  const logoW = 28, logoH = 7;
+  try {
+    pdf.addImage(LAGHETTO_LOGO_B64, 'PNG', PW - MARGIN - logoW, (22 - logoH)/2, logoW, logoH);
+  } catch(e) { /* fallback text */ }
+
+  // Title — left aligned, large
+  pdf.setFont('helvetica','bold');
+  pdf.setFontSize(14);
+  pdf.setTextColor(255, 255, 255);
+  pdf.text(titulo.toUpperCase(), MARGIN, 14);
+
+  // Period — below logo, right aligned
+  pdf.setFont('helvetica','normal');
+  pdf.setFontSize(8);
+  pdf.setTextColor(180, 212, 223);
+  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 19, {align:'right'});
+
+  // Thin divider line
+  pdf.setDrawColor(42, 96, 106);
+  pdf.setLineWidth(0.5);
+  pdf.line(0, 22, PW, 22);
+
   // Footer
-  pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(140,159,168);
+  pdf.setFont('helvetica','normal');
+  pdf.setFontSize(7);
+  pdf.setTextColor(140, 159, 168);
   const now = new Date();
-  pdf.text(`Gerado em ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`, PW/2, PH-4, {align:'center'});
+  pdf.text(
+    `Gerado em ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis · Dashboard de Indicadores`,
+    PW/2, PH - 4, {align:'center'}
+  );
 }
 
 function tableToCanvas(el, W, H){
@@ -2551,10 +2572,10 @@ async function generatePDF(){
   const periodoFull = periodoLabel + ' 2026';
 
   const INDIC_DEFS = {
-    occ: {label:'OCUPAÇÃO (%)',      fv: v => Math.round(v*100)+'%'},
-    dm:  {label:'DIÁRIA MÉDIA (R$)', fv: v => Math.round(v).toLocaleString('pt-BR')},
-    rev: {label:'REVPAR (%)',        fv: v => Math.round(v).toLocaleString('pt-BR')},
-    rec: {label:'RECEITA HOSP. (R$)',fv: v => (v/1e6).toFixed(2).replace('.',',')+'M'},
+    occ: {label:'OCUPAÇÃO',      unit:'%',  icon:'%',  fv: v => Math.round(v*100)+'%'},
+    dm:  {label:'DIÁRIA MÉDIA',  unit:'R$', icon:'R$', fv: v => Math.round(v).toLocaleString('pt-BR')},
+    rev: {label:'REVPAR',        unit:'%',  icon:'%',  fv: v => Math.round(v).toLocaleString('pt-BR')},
+    rec: {label:'RECEITA HOSP.', unit:'R$', icon:'R$', fv: v => (v/1e6).toFixed(2).replace('.',',')+'M'},
   };
 
   const nIndics = opts.indicadores.length;
@@ -2571,38 +2592,8 @@ async function generatePDF(){
 
     const data = calcPracaData(praca, opts.meses, opts.hoteisSel);
 
-    // ── HEADER ──
-    // Background bar
-    pdf.setFillColor(2, 42, 34);
-    pdf.rect(0, 0, PW, 18, 'F');
-
-    // Logo text
-    pdf.setFont('helvetica','bold');
-    pdf.setFontSize(13);
-    pdf.setTextColor(255,255,255);
-    pdf.text('Laghetto', MARGIN, 12);
-    pdf.setFont('helvetica','normal');
-    pdf.setFontSize(13);
-    pdf.setTextColor(180, 212, 223);
-    pdf.text(' Hotéis', MARGIN + 24, 12);
-
-    // Title
-    pdf.setFont('helvetica','bold');
-    pdf.setFontSize(15);
-    pdf.setTextColor(255,255,255);
-    const titleX = PW/2;
-    pdf.text(`INDICADORES ${praca.toUpperCase()}`, titleX, 12, {align:'center'});
-
-    // Period
-    pdf.setFont('helvetica','bold');
-    pdf.setFontSize(11);
-    pdf.setTextColor(180, 212, 223);
-    pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 12, {align:'right'});
-
-    // ── DIVIDER ──
-    pdf.setDrawColor(180, 212, 223);
-    pdf.setLineWidth(0.3);
-    pdf.line(MARGIN, 22, PW - MARGIN, 22);
+    // ── HEADER via pdfHeader ──
+    pdfHeader(pdf, `Indicadores ${praca}`, periodoFull, PW, PH, MARGIN);
 
     // ── CHARTS ──
     const canvas = document.createElement('canvas');
@@ -2624,11 +2615,23 @@ async function generatePDF(){
       pdf.setFillColor(255,255,255);
       pdf.roundedRect(cx, cy, chartW_mm, chartH_mm + 12, 3, 3, 'FD');
 
-      // Indicator label
+      // Indicator label + unit badge
       pdf.setFont('helvetica','bold');
       pdf.setFontSize(9);
       pdf.setTextColor(2, 42, 34);
       pdf.text(def.label, cx + 5, cy + 8);
+      // Unit badge (small pill)
+      const badgeTxt = def.icon;
+      pdf.setFontSize(7);
+      const badgeW = 8, badgeH = 5;
+      const labelW = pdf.getStringUnitWidth(def.label) * 9 / pdf.internal.scaleFactor;
+      const bx = cx + 6 + labelW + 2, by = cy + 3.5;
+      pdf.setFillColor(42, 96, 106);
+      pdf.roundedRect(bx, by, badgeW, badgeH, 1.5, 1.5, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont('helvetica','bold');
+      pdf.text(badgeTxt, bx + badgeW/2, by + 3.5, {align:'center'});
+      pdf.setTextColor(2, 42, 34);
 
       // Chart image
       pdf.addImage(imgData, 'PNG', cx + 2, cy + 10, chartW_mm - 4, chartH_mm);
@@ -2659,6 +2662,8 @@ async function generatePDF(){
   closePdfModal();
 }
 
+
+const LAGHETTO_LOGO_B64 = "data:image/png;base64,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";
 // Boot assíncrono com Google Sheets
 document.body.className = 'tab-resumo';
 (async () => {
