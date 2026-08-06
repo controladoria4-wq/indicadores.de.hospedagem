@@ -357,6 +357,7 @@ body.tab-comparativo .main{padding-top:16px}
   <div style="display:flex;gap:10px;align-items:center">
     <div class="hbadge">Indicadores de Performance</div>
     <div class="hbadge" id="hCount">24 empreendimentos</div>
+    <button onclick="openPdfModal()" style="margin-left:8px;padding:5px 14px;font-size:11px;border-radius:6px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;cursor:pointer;font-family:Inter,sans-serif;font-weight:700">📄 PDF</button>
   </div>
 </header>
 
@@ -577,6 +578,16 @@ body.tab-comparativo .main{padding-top:16px}
       <div class="pdf-modal-body">
 
         <div class="pdf-section">
+          <div class="pdf-section-title">O que exportar</div>
+          <div class="pdf-options" id="pdfConteudo">
+            <label class="pdf-opt selected"><input type="checkbox" value="analitico" checked>📊 Analítico</label>
+            <label class="pdf-opt selected"><input type="checkbox" value="graficos" checked>📈 Gráficos por Praça</label>
+            <label class="pdf-opt"><input type="checkbox" value="comparativo">⚖️ Comparativo</label>
+            <label class="pdf-opt"><input type="checkbox" value="resultado">📋 Resultado</label>
+          </div>
+        </div>
+
+        <div class="pdf-section" id="pdfSecPracas">
           <div class="pdf-section-title">Praças</div>
           <div class="pdf-options" id="pdfPracas">
             <label class="pdf-opt selected"><input type="checkbox" value="Gramado" checked>Gramado</label>
@@ -589,8 +600,8 @@ body.tab-comparativo .main{padding-top:16px}
           </div>
         </div>
 
-        <div class="pdf-section">
-          <div class="pdf-section-title">Indicadores</div>
+        <div class="pdf-section" id="pdfSecIndics">
+          <div class="pdf-section-title">Indicadores (Gráficos)</div>
           <div class="pdf-options" id="pdfIndicadores">
             <label class="pdf-opt selected"><input type="checkbox" value="occ" checked>Ocupação</label>
             <label class="pdf-opt selected"><input type="checkbox" value="dm" checked>Diária Média</label>
@@ -599,8 +610,8 @@ body.tab-comparativo .main{padding-top:16px}
           </div>
         </div>
 
-        <div class="pdf-section">
-          <div class="pdf-section-title">Séries</div>
+        <div class="pdf-section" id="pdfSecSeries">
+          <div class="pdf-section-title">Séries (Gráficos)</div>
           <div class="pdf-options" id="pdfSeries">
             <label class="pdf-opt selected"><input type="checkbox" value="orc" checked>Orçado 2026</label>
             <label class="pdf-opt selected"><input type="checkbox" value="r26" checked>Realizado 2026</label>
@@ -2277,6 +2288,19 @@ function openPdfModal(){
   document.getElementById('pdfMesFim').style.display = periodoVal === 'mes' ? '' : 'none';
 
   document.getElementById('pdfOverlay').style.display = 'flex';
+
+  // Show/hide sections based on content
+  function updateSectionVisibility(){
+    const sel = [...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
+    const hasPracas = sel.includes('graficos');
+    document.getElementById('pdfSecPracas').style.display = hasPracas ? '' : 'none';
+    document.getElementById('pdfSecIndics').style.display = hasPracas ? '' : 'none';
+    document.getElementById('pdfSecSeries').style.display = hasPracas ? '' : 'none';
+  }
+  document.querySelectorAll('#pdfConteudo input').forEach(chk=>{
+    chk.addEventListener('change', ()=>{ chk.closest('.pdf-opt').classList.toggle('selected',chk.checked); updateSectionVisibility(); });
+  });
+  updateSectionVisibility();
 }
 
 function closePdfModal(){
@@ -2409,8 +2433,84 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
   ctx.moveTo(pad.l, pad.t+cH); ctx.lineTo(pad.l+cW, pad.t+cH); ctx.stroke();
 }
 
+
+// ── PDF HELPERS ──
+
+function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
+  pdf.setFillColor(2, 42, 34);
+  pdf.rect(0, 0, PW, 18, 'F');
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(255,255,255);
+  pdf.text('Laghetto', MARGIN, 12);
+  pdf.setFont('helvetica','normal'); pdf.setTextColor(180,212,223);
+  pdf.text(' Hotéis', MARGIN+22, 12);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(255,255,255);
+  pdf.text(titulo, PW/2, 12, {align:'center'});
+  pdf.setFontSize(10); pdf.setTextColor(180,212,223);
+  pdf.text(periodoFull.toUpperCase(), PW-MARGIN, 12, {align:'right'});
+  pdf.setDrawColor(180,212,223); pdf.setLineWidth(0.3);
+  pdf.line(MARGIN, 22, PW-MARGIN, 22);
+  // Footer
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(140,159,168);
+  const now = new Date();
+  pdf.text(`Gerado em ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`, PW/2, PH-4, {align:'center'});
+}
+
+function tableToCanvas(el, W, H){
+  return new Promise(resolve=>{
+    if(!window.html2canvas){ resolve(null); return; }
+    html2canvas(el,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false,width:el.scrollWidth,windowWidth:el.scrollWidth+100})
+      .then(canvas=>resolve(canvas)).catch(()=>resolve(null));
+  });
+}
+
+async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+  pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
+  const el = document.getElementById('tableWrap');
+  if(!el) return;
+  const canvas = await tableToCanvas(el, PW, PH);
+  if(!canvas) return;
+  const imgW = PW - 2*MARGIN;
+  const imgH = Math.min(PH - 30, (canvas.height / canvas.width) * imgW);
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, 26, imgW, imgH);
+}
+
+async function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+  pdfHeader(pdf, 'Comparativo', periodoFull, PW, PH, MARGIN);
+  const el = document.getElementById('compContent');
+  if(!el||!el.innerHTML.trim()) return;
+  const tables = el.querySelectorAll('.comp-table-wrap');
+  let y = 26;
+  for(const t of tables){
+    const canvas = await tableToCanvas(t, PW, PH);
+    if(!canvas) continue;
+    const imgW = PW - 2*MARGIN;
+    const imgH = Math.min(PH - y - 10, (canvas.height / canvas.width) * imgW);
+    if(y + imgH > PH - 10){ pdf.addPage(); pdfHeader(pdf,'Comparativo',periodoFull,PW,PH,MARGIN); y=26; }
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, y, imgW, imgH);
+    y += imgH + 6;
+  }
+}
+
+async function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+  pdfHeader(pdf, 'Resultado', periodoFull, PW, PH, MARGIN);
+  const el = document.getElementById('resContent');
+  if(!el||!el.innerHTML.trim()) return;
+  const tables = el.querySelectorAll('.res-table-wrap');
+  let y = 26;
+  for(const t of tables){
+    const canvas = await tableToCanvas(t, PW, PH);
+    if(!canvas) continue;
+    const imgW = PW - 2*MARGIN;
+    const imgH = Math.min(PH - y - 10, (canvas.height / canvas.width) * imgW);
+    if(y + imgH > PH - 10){ pdf.addPage(); pdfHeader(pdf,'Resultado',periodoFull,PW,PH,MARGIN); y=26; }
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, y, imgW, imgH);
+    y += imgH + 6;
+  }
+}
+
 async function generatePDF(){
-  const opts = getPdfOptions();
+  const conteudo = [...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
+  if(!conteudo.length){ alert('Selecione ao menos um conteúdo.'); return; }  const opts = getPdfOptions();
   if(!opts.pracas.length){ alert('Selecione ao menos uma praça.'); return; }
   if(!opts.indicadores.length){ alert('Selecione ao menos um indicador.'); return; }
   if(!opts.series.length){ alert('Selecione ao menos uma série.'); return; }
