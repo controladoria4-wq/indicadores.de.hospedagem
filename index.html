@@ -2551,10 +2551,10 @@ async function generatePDF(){
   const periodoFull = periodoLabel + ' 2026';
 
   const INDIC_DEFS = {
-    occ: {label:'OCUPAÇÃO',      fv: v => Math.round(v*100)+'%'},
-    dm:  {label:'DIÁRIA MÉDIA',  fv: v => Math.round(v).toLocaleString('pt-BR')},
-    rev: {label:'REVPAR',        fv: v => Math.round(v).toLocaleString('pt-BR')},
-    rec: {label:'RECEITA HOSP.', fv: v => (v/1e6).toFixed(2).replace('.',',')+'M'},
+    occ: {label:'OCUPAÇÃO (%)',      fv: v => Math.round(v*100)+'%'},
+    dm:  {label:'DIÁRIA MÉDIA (R$)', fv: v => Math.round(v).toLocaleString('pt-BR')},
+    rev: {label:'REVPAR (%)',        fv: v => Math.round(v).toLocaleString('pt-BR')},
+    rec: {label:'RECEITA HOSP. (R$)',fv: v => (v/1e6).toFixed(2).replace('.',',')+'M'},
   };
 
   const nIndics = opts.indicadores.length;
