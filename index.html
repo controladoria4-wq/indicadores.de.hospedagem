@@ -2377,60 +2377,75 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
 
   const colors = {orc:'#2a606a', r26:'#b4d4df', r25:'#c8c0b8'};
   const labels = {orc:'Orçado', r26:'Realizado', r25:'Real. 2025'};
-  const pad = {l:10, r:10, t:36, b:28};
-  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
 
-  // Values for active series only
+  // Generous padding so bars breathe nicely
+  const pad = {l: W*0.08, r: W*0.08, t: H*0.18, b: H*0.12};
+  const cW = W - pad.l - pad.r;
+  const cH = H - pad.t - pad.b;
+
   const activeVals = series.map(s => vals[s] || 0);
-  const maxV = Math.max(...activeVals) * 1.25 || 1;
+  const maxV = Math.max(...activeVals) * 1.28 || 1;
 
   const nBars = series.length;
-  const gap = 8;
-  const totalGap = (nBars - 1) * gap;
-  const bW = Math.min(80, (cW - 40 - totalGap) / nBars);
-  const startX = pad.l + (cW - nBars * bW - totalGap) / 2;
+  // Bars take up ~55% of chart width, centered
+  const totalBarsW = cW * 0.55;
+  const gap = nBars > 1 ? totalBarsW * 0.12 : 0;
+  const bW = (totalBarsW - (nBars-1)*gap) / nBars;
+  const startX = pad.l + (cW - totalBarsW) / 2;
 
   // Draw bars
   series.forEach((s, i) => {
     const v = vals[s] || 0;
-    const bH = Math.max(2, (v / maxV) * cH);
+    const bH = Math.max(4, (v / maxV) * cH);
     const bX = startX + i * (bW + gap);
     const bY = pad.t + cH - bH;
+    const radius = Math.min(bW*0.12, 6, bH/2);
 
     ctx.fillStyle = colors[s];
     ctx.beginPath();
-    const r = Math.min(5, bW/3, bH/2);
-    ctx.moveTo(bX+r, bY); ctx.lineTo(bX+bW-r, bY);
-    ctx.quadraticCurveTo(bX+bW, bY, bX+bW, bY+r);
-    ctx.lineTo(bX+bW, bY+bH); ctx.lineTo(bX, bY+bH); ctx.lineTo(bX, bY+r);
-    ctx.quadraticCurveTo(bX, bY, bX+r, bY); ctx.closePath(); ctx.fill();
+    ctx.moveTo(bX+radius, bY);
+    ctx.lineTo(bX+bW-radius, bY);
+    ctx.arcTo(bX+bW, bY, bX+bW, bY+radius, radius);
+    ctx.lineTo(bX+bW, bY+bH);
+    ctx.lineTo(bX, bY+bH);
+    ctx.arcTo(bX, bY, bX+radius, bY, radius);
+    ctx.closePath();
+    ctx.fill();
 
-    // Value label
+    // Value label above bar
     const fmt = fmtFn(v);
-    ctx.font = `bold ${Math.min(13, bW*0.28)}px Inter, Arial, sans-serif`;
+    const fSize = Math.min(15, Math.max(11, bW * 0.22));
+    ctx.font = `bold ${fSize}px Inter, Arial, sans-serif`;
     ctx.fillStyle = '#022a22';
     ctx.textAlign = 'center';
-    ctx.fillText(fmt, bX + bW/2, bY - 5);
-  });
-
-  // Legend
-  let lx = pad.l;
-  const ly = 14;
-  series.forEach(s => {
-    ctx.fillStyle = colors[s];
-    ctx.fillRect(lx, ly-8, 10, 10);
-    ctx.font = '11px Inter, Arial, sans-serif';
-    ctx.fillStyle = '#4a6a6e';
-    ctx.textAlign = 'left';
-    ctx.fillText(labels[s], lx+14, ly);
-    lx += ctx.measureText(labels[s]).width + 28;
+    ctx.fillText(fmt, bX + bW/2, bY - 8);
   });
 
   // Baseline
-  ctx.strokeStyle = 'rgba(10,45,35,0.12)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(10,45,35,0.15)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(pad.l, pad.t+cH); ctx.lineTo(pad.l+cW, pad.t+cH); ctx.stroke();
+  ctx.moveTo(pad.l, pad.t+cH);
+  ctx.lineTo(pad.l+cW, pad.t+cH);
+  ctx.stroke();
+
+  // Legend — centered at top
+  const legItems = series.map(s => ({s, label: labels[s]}));
+  ctx.font = '12px Inter, Arial, sans-serif';
+  const legTotalW = legItems.reduce((sum,item) => sum + 14 + ctx.measureText(item.label).width + 18, 0) - 18;
+  let lx = (W - legTotalW) / 2;
+  const ly = H * 0.08;
+  legItems.forEach(({s, label}) => {
+    // Square dot
+    ctx.fillStyle = colors[s];
+    ctx.beginPath();
+    ctx.arc(lx+5, ly-4, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#4a6a6e';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, lx+14, ly);
+    lx += 14 + ctx.measureText(label).width + 18;
+  });
 }
 
 
@@ -2444,7 +2459,7 @@ function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
   pdf.setFont('helvetica','normal'); pdf.setTextColor(180,212,223);
   pdf.text(' Hotéis', MARGIN+22, 12);
   pdf.setFont('helvetica','bold'); pdf.setFontSize(14); pdf.setTextColor(255,255,255);
-  pdf.text(titulo, PW/2, 12, {align:'center'});
+  pdf.text(titulo.toUpperCase(), PW/2, 12, {align:'center'});
   pdf.setFontSize(10); pdf.setTextColor(180,212,223);
   pdf.text(periodoFull.toUpperCase(), PW-MARGIN, 12, {align:'right'});
   pdf.setDrawColor(180,212,223); pdf.setLineWidth(0.3);
@@ -2576,7 +2591,7 @@ async function generatePDF(){
     pdf.setFontSize(15);
     pdf.setTextColor(255,255,255);
     const titleX = PW/2;
-    pdf.text(`Indicadores ${praca}`, titleX, 12, {align:'center'});
+    pdf.text(`INDICADORES ${praca.toUpperCase()}`, titleX, 12, {align:'center'});
 
     // Period
     pdf.setFont('helvetica','bold');
