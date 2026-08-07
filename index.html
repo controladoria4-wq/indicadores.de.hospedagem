@@ -2484,13 +2484,13 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
     ctx.closePath();
     ctx.fill();
 
-    // Value label above bar
+    // Value label above bar — scale font with canvas size
     const fmt = fmtFn(v);
-    const fSize = Math.min(15, Math.max(11, bW * 0.22));
+    const fSize = Math.max(W * 0.025, Math.min(W * 0.04, bW * 0.35));
     ctx.font = `bold ${fSize}px Inter, Arial, sans-serif`;
     ctx.fillStyle = '#022a22';
     ctx.textAlign = 'center';
-    ctx.fillText(fmt, bX + bW/2, bY - 8);
+    ctx.fillText(fmt, bX + bW/2, bY - fSize * 0.4);
   });
 
   // Baseline
@@ -2503,20 +2503,24 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
 
   // Legend — centered at top
   const legItems = series.map(s => ({s, label: labels[s]}));
-  ctx.font = '12px Inter, Arial, sans-serif';
-  const legTotalW = legItems.reduce((sum,item) => sum + 14 + ctx.measureText(item.label).width + 18, 0) - 18;
+  const legFSize = Math.max(W * 0.018, 11);
+  ctx.font = `${legFSize}px Inter, Arial, sans-serif`;
+  ctx.font = `${legFSize}px Inter, Arial, sans-serif`;
+  const dotR = Math.max(W * 0.008, 5);
+  const legGap = dotR * 2.2 + 4;
+  const legSpacing = W * 0.06;
+  const legTotalW = legItems.reduce((sum,item) => sum + legGap + ctx.measureText(item.label).width + legSpacing, 0) - legSpacing;
   let lx = (W - legTotalW) / 2;
-  const ly = H * 0.08;
+  const ly = H * 0.09;
   legItems.forEach(({s, label}) => {
-    // Square dot
     ctx.fillStyle = colors[s];
     ctx.beginPath();
-    ctx.arc(lx+5, ly-4, 5, 0, Math.PI*2);
+    ctx.arc(lx + dotR, ly - dotR * 0.4, dotR, 0, Math.PI*2);
     ctx.fill();
     ctx.fillStyle = '#4a6a6e';
     ctx.textAlign = 'left';
-    ctx.fillText(label, lx+14, ly);
-    lx += 14 + ctx.measureText(label).width + 18;
+    ctx.fillText(label, lx + legGap, ly);
+    lx += legGap + ctx.measureText(label).width + legSpacing;
   });
 }
 
@@ -2555,7 +2559,7 @@ function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
   pdf.setLineWidth(0.5);
   pdf.line(0, 22, PW, 22);
 
-  // Sem rodapé
+
 }
 
 function tableToCanvas(el, W, H){
@@ -2649,7 +2653,7 @@ async function generatePDF(){
   // Layout: nIndics charts per page, side by side
   const chartW_mm = (PW - 2*MARGIN - (nIndics-1)*8) / nIndics;
   const chartH_mm = PH - MARGIN - 44; // leave room for header
-  const PX_PER_MM = 12; // alta resolução (≈288dpi)
+  const PX_PER_MM = 8; // boa resolução sem encolher texto
   const chartW_px = Math.round(chartW_mm * PX_PER_MM);
   const chartH_px = Math.round(chartH_mm * PX_PER_MM);
 
@@ -2731,14 +2735,7 @@ async function generatePDF(){
     }
 
     // ── FOOTER ──
-    pdf.setFont('helvetica','normal');
-    pdf.setFontSize(7);
-    pdf.setTextColor(140, 159, 168);
-    const now = new Date();
-    pdf.text(
-      `Gerado em ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis · Dashboard de Indicadores`,
-      PW/2, PH - 4, {align:'center'}
-    );
+
 
     // Progress
     const pct = Math.round((pi+1)/pdfPages.length*100);
