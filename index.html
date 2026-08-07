@@ -2261,43 +2261,21 @@ const MESES_NMF_PDF = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 const MESES_ABR_PDF = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function openPdfModal(){
-  // Checkbox toggle
-  document.querySelectorAll('.pdf-opt input[type=checkbox]').forEach(chk=>{
-    chk.addEventListener('change', e=>{
-      e.target.closest('.pdf-opt').classList.toggle('selected', e.target.checked);
-      updatePdfSections();
-    });
-  });
-  // Radio toggle
-  document.querySelectorAll('.pdf-opt input[type=radio]').forEach(rad=>{
-    rad.addEventListener('change', e=>{
-      document.querySelectorAll(`input[name="${e.target.name}"]`).forEach(r=>{
-        r.closest('.pdf-opt').classList.toggle('selected', r.checked);
-      });
-      if(e.target.name==='pdfPeriodo'){
-        const isMes = e.target.value==='mes';
-        document.getElementById('pdfAteLabel').style.display = isMes?'flex':'none';
-        document.getElementById('pdfMesFim').style.display = isMes?'':'none';
-      }
-      if(e.target.name==='pdfGrupo'){
-        document.getElementById('pdfListaPracas').style.display    = e.target.value==='praca'    ?'':'none';
-        document.getElementById('pdfListaRegionais').style.display = e.target.value==='regional' ?'':'none';
-        document.getElementById('pdfListaHoteis2').style.display   = e.target.value==='hotel'    ?'':'none';
-      }
-    });
-  });
-
-  // Populate hotel list
+  // Populate hotel list once
   const hWrap = document.getElementById('pdfHoteisGrafico');
   if(hWrap && !hWrap.childElementCount){
     DB.hotels.forEach(h=>{
       const lbl=document.createElement('label'); lbl.className='pdf-opt';
       lbl.innerHTML=`<input type="checkbox" value="${h.nome}">${h.nome}`;
-      lbl.querySelector('input').addEventListener('change',e=>lbl.classList.toggle('selected',e.target.checked));
+      lbl.addEventListener('click', e=>{
+        e.preventDefault();
+        const chk = lbl.querySelector('input');
+        chk.checked = !chk.checked;
+        lbl.classList.toggle('selected', chk.checked);
+      });
       hWrap.appendChild(lbl);
     });
   }
-
   updatePdfSections();
   document.getElementById('pdfOverlay').style.display='flex';
 }
@@ -2306,6 +2284,38 @@ function updatePdfSections(){
   const sel=[...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
   document.getElementById('pdfSecGraficos').style.display = sel.includes('graficos')?'':'none';
 }
+
+// Global click handler for pdf-opt labels (handles all static ones)
+document.addEventListener('click', function(e){
+  const lbl = e.target.closest('.pdf-opt');
+  if(!lbl || !document.getElementById('pdfOverlay').contains(lbl)) return;
+  const input = lbl.querySelector('input');
+  if(!input) return;
+
+  if(input.type === 'checkbox'){
+    // Already handled by browser — just sync class and sections
+    lbl.classList.toggle('selected', input.checked);
+    updatePdfSections();
+  } else if(input.type === 'radio'){
+    // Sync all radios in group
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(r=>{
+      r.closest('.pdf-opt').classList.toggle('selected', r.checked);
+    });
+    if(input.name==='pdfPeriodo'){
+      const isMes = input.value==='mes';
+      document.getElementById('pdfAteLabel').style.display = isMes?'flex':'none';
+      document.getElementById('pdfMesFim').style.display = isMes?'':'none';
+    }
+    if(input.name==='pdfGrupo'){
+      document.getElementById('pdfListaPracas').style.display    = input.value==='praca'    ?'':'none';
+      document.getElementById('pdfListaRegionais').style.display = input.value==='regional' ?'':'none';
+      document.getElementById('pdfListaHoteis2').style.display   = input.value==='hotel'    ?'':'none';
+    }
+    if(input.name==='pdfOrientacao'){
+      // nothing extra needed
+    }
+  }
+});
 
 
 function closePdfModal(){
