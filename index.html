@@ -2502,7 +2502,7 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
   const legFSize = Math.max(W * 0.013, 9);
   ctx.font = `${legFSize}px Inter, Arial, sans-serif`;
   ctx.font = `${legFSize}px Inter, Arial, sans-serif`;
-  const dotR = Math.max(W * 0.008, 5);
+  const dotR = W * 0.012;
   const legGap = dotR * 2.2 + 4;
   const legSpacing = W * 0.06;
   const legTotalW = legItems.reduce((sum,item) => sum + legGap + ctx.measureText(item.label).width + legSpacing, 0) - legSpacing;
@@ -2529,17 +2529,25 @@ function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
   pdf.setFillColor(2, 42, 34);
   pdf.rect(0, 0, PW, BAR_H, 'F');
 
-  // Symbol — vertically centered
-  const SYM = 8;
-  try { pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, MID - SYM/2, SYM, SYM); } catch(e) {}
-
-  // Title — same vertical center
+  // Title first — measure its height to align everything
   const FS = 12;
-  const baseline = MID + FS * 0.175;
-  pdf.setFont('helvetica','bold'); pdf.setFontSize(FS); pdf.setTextColor(255,255,255);
-  pdf.text(titulo.toUpperCase(), MARGIN + SYM + 3, baseline);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(FS);
+  // In jsPDF, text baseline is at y. Cap-height ≈ 70% of font size in pt
+  // 1pt = 0.353mm, so FS pt capHeight ≈ FS * 0.353 * 0.7 mm
+  const capH = FS * 0.353 * 0.70; // mm
+  // Center text cap-height in bar: textBaseline = MID + capH/2
+  const baseline = MID + capH / 2;
 
-  // Period — right, same baseline, light gray
+  // Symbol — align its vertical center to text cap-height center
+  const SYM = capH * 1.4; // slightly taller than cap height
+  const symY = baseline - capH / 2 - (SYM - capH) / 2;
+  try { pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, symY, SYM, SYM); } catch(e) {}
+
+  // Title
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(FS); pdf.setTextColor(255,255,255);
+  pdf.text(titulo.toUpperCase(), MARGIN + SYM + 2.5, baseline);
+
+  // Period — same baseline
   pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
   pdf.text(periodoFull.toUpperCase(), PW - MARGIN, baseline, {align:'right'});
 
@@ -2698,22 +2706,30 @@ async function generatePDF(){
       pdf.setFillColor(255,255,255);
       pdf.roundedRect(cx, cy, chartW_mm, chartH_mm + 12, 3, 3, 'FD');
 
-      // Indicator label + unit badge
+      // Indicator label + unit badge — all on same baseline
+      const LABEL_FS = 9;
       pdf.setFont('helvetica','bold');
-      pdf.setFontSize(9);
+      pdf.setFontSize(LABEL_FS);
       pdf.setTextColor(2, 42, 34);
-      pdf.text(def.label, cx + 5, cy + 7);
-      // Unit badge (small pill)
-      const badgeTxt = def.icon;
-      pdf.setFontSize(7);
-      const badgeW = 8, badgeH = 5;
-      const labelW = pdf.getStringUnitWidth(def.label) * 9 / pdf.internal.scaleFactor;
-      const bx = cx + 6 + labelW + 2, by = cy + 2.5;
+      // Text baseline inside card
+      const labelBaseline = cy + 7;
+      pdf.text(def.label, cx + 5, labelBaseline);
+
+      // Badge: vertically centered on label cap-height
+      const labelCapH = LABEL_FS * 0.353 * 0.70; // mm
+      const badgeH = labelCapH * 1.5;
+      const badgeW = 9;
+      const labelW = pdf.getStringUnitWidth(def.label) * LABEL_FS / pdf.internal.scaleFactor;
+      const bx = cx + 6 + labelW + 1.5;
+      const by = labelBaseline - labelCapH - (badgeH - labelCapH) / 2;
       pdf.setFillColor(42, 96, 106);
       pdf.roundedRect(bx, by, badgeW, badgeH, 1.5, 1.5, 'F');
-      pdf.setTextColor(255, 255, 255);
       pdf.setFont('helvetica','bold');
-      pdf.text(badgeTxt, bx + badgeW/2, by + 3.5, {align:'center'});
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(255, 255, 255);
+      // Badge text centered: by + badgeH/2 + smallCapH/2
+      const badgeTextY = by + badgeH * 0.68;
+      pdf.text(def.icon, bx + badgeW/2, badgeTextY, {align:'center'});
       pdf.setTextColor(2, 42, 34);
 
       // Chart image
