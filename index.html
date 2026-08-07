@@ -569,7 +569,7 @@ body.tab-comparativo .main{padding-top:16px}
   </div>
 
   <!-- PDF MODAL -->
-  <div class="pdf-overlay" id="pdfOverlay" onclick="if(event.target===this)closePdfModal()">
+  <div class="pdf-overlay" id="pdfOverlay" style="display:none" onclick="if(event.target===this)closePdfModal()">
     <div class="pdf-modal">
       <div class="pdf-modal-header">
         <div class="pdf-modal-title">📄 Gerar PDF</div>
@@ -589,6 +589,29 @@ body.tab-comparativo .main{padding-top:16px}
             Os filtros aplicados em cada aba serão usados automaticamente.
           </div>
           <input type="hidden" id="pdfConteudoHidden">
+        </div>
+
+        <div class="pdf-section">
+          <div class="pdf-section-title">Período</div>
+          <div class="pdf-options" style="margin-bottom:8px" id="pdfPeriodoComum">
+            <button type="button" class="pdf-opt" data-val="mes" onclick="togglePdfPeriodo(this)">Mês específico</button>
+            <button type="button" class="pdf-opt selected" data-val="acum" onclick="togglePdfPeriodo(this)">Acumulado</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="pdfMesInicioComum" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
+              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+            <span id="pdfAteLabelComum" style="display:none;font-size:12px;color:var(--muted);font-weight:600">até</span>
+            <select id="pdfMesFimComum" style="display:none;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
+              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+            </select>
+          </div>
         </div>
 
         <div class="pdf-section" id="pdfSecGraficos">
@@ -639,26 +662,6 @@ body.tab-comparativo .main{padding-top:16px}
             <label class="pdf-opt"><input type="checkbox" value="r25">Realizado 2025</label>
           </div>
 
-          <div class="pdf-section-title" style="margin-top:10px">Período</div>
-          <div class="pdf-options" style="margin-bottom:8px">
-            <label class="pdf-opt" id="pdfOptMes"><input type="radio" name="pdfPeriodo" value="mes">Mês específico</label>
-            <label class="pdf-opt selected" id="pdfOptAcum"><input type="radio" name="pdfPeriodo" value="acum" checked>Acumulado</label>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap" id="pdfMesSelector">
-            <select id="pdfMesInicio" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
-              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-            </select>
-            <span id="pdfAteLabel" style="display:none;align-items:center;font-size:12px;color:var(--muted);font-weight:600">até</span>
-            <select id="pdfMesFim" style="display:none;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
-              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-            </select>
-          </div>
         </div>
 
         <div class="pdf-section">
@@ -2313,6 +2316,14 @@ document.addEventListener('click', function(e){
   syncPdfOpt(input);
 });
 
+function togglePdfPeriodo(btn){
+  document.querySelectorAll('#pdfPeriodoComum button').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const isMes = btn.dataset.val === 'mes';
+  document.getElementById('pdfAteLabelComum').style.display = isMes ? 'block' : 'none';
+  document.getElementById('pdfMesFimComum').style.display   = isMes ? '' : 'none';
+}
+
 function togglePdfConteudo(btn){
   btn.classList.toggle('selected');
   updatePdfSections();
@@ -2352,9 +2363,10 @@ function getPdfOptions(){
   const indicadores = [...document.querySelectorAll('#pdfIndicadores input:checked')].map(i=>i.value);
   const series = [...document.querySelectorAll('#pdfSeries input:checked')].map(i=>i.value);
   const hoteisSel = [...document.querySelectorAll('#pdfHoteis input:checked')].map(i=>i.value);
-  const periodo = document.querySelector('input[name="pdfPeriodo"]:checked').value;
-  const mesInicio = parseInt(document.getElementById('pdfMesInicio').value);
-  const mesFim = periodo === 'mes' ? parseInt(document.getElementById('pdfMesFim').value) : mesInicio;
+  const periodoBtn = document.querySelector('#pdfPeriodoComum .selected');
+  const periodo = periodoBtn ? periodoBtn.dataset.val : 'acum';
+  const mesInicio = parseInt(document.getElementById('pdfMesInicioComum').value);
+  const mesFim = periodo === 'mes' ? parseInt(document.getElementById('pdfMesFimComum').value) : mesInicio;
   const meses = periodo === 'acum'
     ? Array.from({length: mesInicio}, (_,i) => i+1)
     : Array.from({length: mesFim - mesInicio + 1}, (_,i) => mesInicio + i);
