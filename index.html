@@ -2481,21 +2481,18 @@ function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
   pdf.setFillColor(2, 42, 34);
   pdf.rect(0, 0, PW, BAR_H, 'F');
 
-  // Title left, no logo in header
   pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(255,255,255);
   pdf.text(titulo.toUpperCase(), MARGIN, 13);
 
-  // Period right
   pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
   pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 13, {align:'right'});
 
-  // Divider
   pdf.setDrawColor(42, 96, 106); pdf.setLineWidth(0.4);
   pdf.line(0, BAR_H, PW, BAR_H);
 
-  // Footer: horizontal logo centered, small
-  const logoW = 30, logoH = 6.5;
-  try { pdf.addImage(LAGHETTO_HORIZ_B64, 'PNG', (PW-logoW)/2, PH-logoH-3, logoW, logoH); } catch(e) {}
+  // Footer: small text, centered, muted
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(160,170,168);
+  pdf.text('LAGHETTO HOTÉIS', PW/2, PH - 5, {align:'center'});
 }
 
 function tableToCanvas(el, W, H){
@@ -2649,15 +2646,16 @@ async function generatePDF(){
       pdf.roundedRect(cx, cy, chartW_mm, chartH_mm + 12, 3, 3, 'FD');
 
       // Indicator label + unit badge
-      const LABEL_FS = 11;
+      // Label at cy+8, badge pill centered on same cap-height
+      const LABEL_FS = 10;
       pdf.setFont('helvetica','bold'); pdf.setFontSize(LABEL_FS); pdf.setTextColor(2,42,34);
       pdf.text(def.label, cx + 5, cy + 8);
       const _lw = pdf.getStringUnitWidth(def.label) * LABEL_FS / pdf.internal.scaleFactor;
-      const _bH = 5, _bW = 10;
+      // Badge: top = cy+4, height = 4mm (cap-height of 10pt ≈ 3.5mm)
       pdf.setFillColor(42,96,106);
-      pdf.roundedRect(cx+5+_lw+2, cy+3, _bW, _bH, 1.5, 1.5, 'F');
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(255,255,255);
-      pdf.text(def.icon, cx+5+_lw+2+_bW/2, cy+6.8, {align:'center'});
+      pdf.roundedRect(cx+5+_lw+2, cy+4, 9, 4, 1.2, 1.2, 'F');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5); pdf.setTextColor(255,255,255);
+      pdf.text(def.icon, cx+5+_lw+6.5, cy+7, {align:'center'});
       pdf.setTextColor(2,42,34);
 
       // Chart image
