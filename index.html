@@ -577,98 +577,84 @@ body.tab-comparativo .main{padding-top:16px}
       </div>
       <div class="pdf-modal-body">
 
+        <!-- O QUE EXPORTAR -->
         <div class="pdf-section">
           <div class="pdf-section-title">O que exportar</div>
           <div style="display:flex;flex-wrap:wrap;gap:8px" id="pdfConteudoBtns">
             <button type="button" class="pdf-opt selected" data-val="analitico" onclick="togglePdfConteudo(this)">📊 Analítico</button>
-            <button type="button" class="pdf-opt" data-val="graficos" onclick="togglePdfConteudo(this)">📈 Gráficos por Praça</button>
+            <button type="button" class="pdf-opt" data-val="graficos" onclick="togglePdfConteudo(this)">📈 Gráficos</button>
             <button type="button" class="pdf-opt" data-val="comparativo" onclick="togglePdfConteudo(this)">⚖️ Comparativo</button>
             <button type="button" class="pdf-opt" data-val="resultado" onclick="togglePdfConteudo(this)">📋 Resultado</button>
           </div>
-          <div style="margin-top:8px;font-size:11px;color:var(--muted);font-family:Inter,sans-serif">
-            Os filtros aplicados em cada aba serão usados automaticamente.
-          </div>
-          <input type="hidden" id="pdfConteudoHidden">
         </div>
 
+        <!-- PERÍODO -->
         <div class="pdf-section">
           <div class="pdf-section-title">Período</div>
-          <div class="pdf-options" style="margin-bottom:8px" id="pdfPeriodoComum">
-            <button type="button" class="pdf-opt" data-val="mes" onclick="togglePdfPeriodo(this)">Mês específico</button>
-            <button type="button" class="pdf-opt selected" data-val="acum" onclick="togglePdfPeriodo(this)">Acumulado</button>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <select id="pdfMesInicioComum" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
-              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-            </select>
-            <span id="pdfAteLabelComum" style="display:none;font-size:12px;color:var(--muted);font-weight:600">até</span>
-            <select id="pdfMesFimComum" style="display:none;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
-              <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
-              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
-              <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-            </select>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <div>
+              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Mês (até)</div>
+              <select id="pdfMesSelect" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
+                <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+                <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+                <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+                <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Visão</div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="pdf-opt selected" data-val="acum" onclick="togglePdfVisao(this)">Acumulado</button>
+                <button type="button" class="pdf-opt" data-val="mes" onclick="togglePdfVisao(this)">Só o mês</button>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Ano anterior</div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="pdf-opt" data-val="2025" onclick="togglePdfAnoAnt(this)">2025</button>
+                <button type="button" class="pdf-opt selected" data-val="none" onclick="togglePdfAnoAnt(this)">Não exibir</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="pdf-section" id="pdfSecGraficos">
-          <div class="pdf-section-title">Gráficos — Agrupar por</div>
-          <div class="pdf-options" style="margin-bottom:10px">
-            <label class="pdf-opt selected" id="pdfGrpPraca"><input type="radio" name="pdfGrupo" value="praca" checked>Por Praça</label>
-            <label class="pdf-opt" id="pdfGrpRegional"><input type="radio" name="pdfGrupo" value="regional">Por Regional</label>
-            <label class="pdf-opt" id="pdfGrpHotel"><input type="radio" name="pdfGrupo" value="hotel">Por Hotel</label>
+        <!-- AGRUPAR POR -->
+        <div class="pdf-section">
+          <div class="pdf-section-title">Agrupar por</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            <button type="button" class="pdf-opt selected" data-val="praca" onclick="setPdfGrupo(this)">Praça</button>
+            <button type="button" class="pdf-opt" data-val="regional" onclick="setPdfGrupo(this)">Regional</button>
+            <button type="button" class="pdf-opt" data-val="hotel" onclick="setPdfGrupo(this)">Hotel</button>
+            <button type="button" class="pdf-opt" data-val="modelo" onclick="setPdfGrupo(this)">Modelo</button>
           </div>
 
-          <div id="pdfListaPracas">
-            <div class="pdf-section-title" style="margin-top:4px">Praças</div>
-            <div class="pdf-options" id="pdfPracas">
-              <label class="pdf-opt selected"><input type="checkbox" value="Gramado" checked>Gramado</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="Canela" checked>Canela</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="Rio de Janeiro" checked>Rio de Janeiro</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="Porto Alegre" checked>Porto Alegre</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="Bento Gonçalves" checked>Bento Gonçalves</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="Rio Grande" checked>Rio Grande</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="São Paulo" checked>São Paulo</label>
-            </div>
-          </div>
-          <div id="pdfListaRegionais" style="display:none">
-            <div class="pdf-section-title" style="margin-top:4px">Regionais</div>
-            <div class="pdf-options" id="pdfRegionais">
-              <label class="pdf-opt selected"><input type="checkbox" value="R1" checked>Regional 1</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="R2" checked>Regional 2</label>
-              <label class="pdf-opt selected"><input type="checkbox" value="R3" checked>Regional 3</label>
-            </div>
-          </div>
-          <div id="pdfListaHoteis2" style="display:none">
-            <div class="pdf-section-title" style="margin-top:4px">Hotéis</div>
-            <div class="pdf-options" id="pdfHoteisGrafico" style="max-height:100px;overflow-y:auto"></div>
-          </div>
-
-          <div class="pdf-section-title" style="margin-top:10px">Indicadores</div>
-          <div class="pdf-options" id="pdfIndicadores">
-            <label class="pdf-opt selected"><input type="checkbox" value="occ" checked>Ocupação</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="dm" checked>Diária Média</label>
-            <label class="pdf-opt"><input type="checkbox" value="rev">RevPAR</label>
-            <label class="pdf-opt"><input type="checkbox" value="rec">Receita</label>
-          </div>
-
-          <div class="pdf-section-title" style="margin-top:10px">Séries</div>
-          <div class="pdf-options" id="pdfSeries">
-            <label class="pdf-opt selected"><input type="checkbox" value="orc" checked>Orçado 2026</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="r26" checked>Realizado 2026</label>
-            <label class="pdf-opt"><input type="checkbox" value="r25">Realizado 2025</label>
-          </div>
-
+          <!-- Lista dinâmica -->
+          <div id="pdfGrupoLista" style="display:flex;flex-wrap:wrap;gap:6px;max-height:120px;overflow-y:auto"></div>
         </div>
 
+        <!-- GRÁFICOS: indicadores e séries (só quando Gráficos selecionado) -->
+        <div class="pdf-section" id="pdfSecGraficos" style="display:none">
+          <div class="pdf-section-title">Indicadores</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+            <button type="button" class="pdf-opt selected" data-val="occ" onclick="this.classList.toggle('selected')">Ocupação</button>
+            <button type="button" class="pdf-opt selected" data-val="dm" onclick="this.classList.toggle('selected')">Diária Média</button>
+            <button type="button" class="pdf-opt" data-val="rev" onclick="this.classList.toggle('selected')">RevPAR</button>
+            <button type="button" class="pdf-opt" data-val="rec" onclick="this.classList.toggle('selected')">Receita</button>
+          </div>
+          <div class="pdf-section-title">Séries</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" class="pdf-opt selected" data-val="orc" onclick="this.classList.toggle('selected')">Orçado 2026</button>
+            <button type="button" class="pdf-opt selected" data-val="r26" onclick="this.classList.toggle('selected')">Realizado 2026</button>
+            <button type="button" class="pdf-opt" data-val="r25" onclick="this.classList.toggle('selected')">Realizado 2025</button>
+          </div>
+        </div>
+
+        <!-- ORIENTAÇÃO -->
         <div class="pdf-section">
           <div class="pdf-section-title">Orientação</div>
-          <div class="pdf-options">
-            <label class="pdf-opt selected" id="pdfOptLandscape"><input type="radio" name="pdfOrientacao" value="landscape" checked>🖼 Paisagem (A4)</label>
-            <label class="pdf-opt" id="pdfOptPortrait"><input type="radio" name="pdfOrientacao" value="portrait">📄 Retrato (A4)</label>
+          <div style="display:flex;gap:6px">
+            <button type="button" class="pdf-opt selected" data-val="landscape" onclick="togglePdfOrient(this)">🖼 Paisagem (A4)</button>
+            <button type="button" class="pdf-opt" data-val="portrait" onclick="togglePdfOrient(this)">📄 Retrato (A4)</button>
           </div>
         </div>
 
@@ -679,6 +665,7 @@ body.tab-comparativo .main{padding-top:16px}
           <div id="pdfProgressTxt" style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center"></div>
         </div>
       </div>
+
       <div class="pdf-modal-footer">
         <button class="pdf-btn pdf-btn-cancel" onclick="closePdfModal()">Cancelar</button>
         <button class="pdf-btn pdf-btn-generate" id="pdfGenBtn" onclick="generatePDF()">📄 Gerar PDF</button>
@@ -2280,6 +2267,7 @@ function openPdfModal(){
       hWrap.appendChild(lbl);
     });
   }
+  buildPdfGrupoLista('praca');
   updatePdfSections();
   document.getElementById('pdfOverlay').style.display='flex';
 }
@@ -2316,18 +2304,44 @@ document.addEventListener('click', function(e){
   syncPdfOpt(input);
 });
 
-function togglePdfPeriodo(btn){
-  document.querySelectorAll('#pdfPeriodoComum button').forEach(b=>b.classList.remove('selected'));
+function togglePdfVisao(btn){
+  document.querySelectorAll('[onclick="togglePdfVisao(this)"]').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
-  const isMes = btn.dataset.val === 'mes';
-  document.getElementById('pdfAteLabelComum').style.display = isMes ? 'block' : 'none';
-  document.getElementById('pdfMesFimComum').style.display   = isMes ? '' : 'none';
 }
-
+function togglePdfAnoAnt(btn){
+  document.querySelectorAll('[onclick="togglePdfAnoAnt(this)"]').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function togglePdfOrient(btn){
+  document.querySelectorAll('[onclick="togglePdfOrient(this)"]').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function setPdfGrupo(btn){
+  document.querySelectorAll('[onclick="setPdfGrupo(this)"]').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  buildPdfGrupoLista(btn.dataset.val);
+}
+function buildPdfGrupoLista(grupo){
+  const wrap = document.getElementById('pdfGrupoLista');
+  wrap.innerHTML = '';
+  let items = [];
+  if(grupo==='praca')    items = [...new Set(DB.hotels.map(h=>h.praca))].filter(Boolean).sort();
+  else if(grupo==='regional') items = [...new Set(DB.hotels.map(h=>h.regional))].filter(Boolean).sort();
+  else if(grupo==='hotel')    items = DB.hotels.map(h=>h.nome);
+  else if(grupo==='modelo')   items = [...new Set(DB.hotels.map(h=>h.modelo))].filter(Boolean).sort();
+  items.forEach(item=>{
+    const btn = document.createElement('button');
+    btn.type='button'; btn.className='pdf-opt selected'; btn.dataset.val=item;
+    btn.textContent = item;
+    btn.onclick = ()=>btn.classList.toggle('selected');
+    wrap.appendChild(btn);
+  });
+}
 function togglePdfConteudo(btn){
   btn.classList.toggle('selected');
   updatePdfSections();
 }
+
 
 function syncPdfOpt(input){
   if(input.type === 'checkbox'){
@@ -2356,252 +2370,32 @@ function closePdfModal(){
 }
 
 function getPdfOptions(){
-  const grupo = document.querySelector('input[name="pdfGrupo"]:checked')?.value || 'praca';
-  const pracas    = [...document.querySelectorAll('#pdfPracas input:checked')].map(i=>i.value);
-  const regionais = [...document.querySelectorAll('#pdfRegionais input:checked')].map(i=>i.value);
-  const hoteisGrf = [...document.querySelectorAll('#pdfHoteisGrafico input:checked')].map(i=>i.value);
-  const indicadores = [...document.querySelectorAll('#pdfIndicadores input:checked')].map(i=>i.value);
-  const series = [...document.querySelectorAll('#pdfSeries input:checked')].map(i=>i.value);
-  const hoteisSel = [...document.querySelectorAll('#pdfHoteis input:checked')].map(i=>i.value);
-  const periodoBtn = document.querySelector('#pdfPeriodoComum .selected');
-  const periodo = periodoBtn ? periodoBtn.dataset.val : 'acum';
-  const mesInicio = parseInt(document.getElementById('pdfMesInicioComum').value);
-  const mesFim = periodo === 'mes' ? parseInt(document.getElementById('pdfMesFimComum').value) : mesInicio;
-  const meses = periodo === 'acum'
-    ? Array.from({length: mesInicio}, (_,i) => i+1)
-    : Array.from({length: mesFim - mesInicio + 1}, (_,i) => mesInicio + i);
-  return {grupo, pracas, regionais, hoteisGrf, indicadores, series, hoteisSel, periodo, mesInicio, mesFim, meses};
-}
+  const conteudo = [...document.querySelectorAll('#pdfConteudoBtns .selected')].map(b=>b.dataset.val);
+  const mesSelect = parseInt(document.getElementById('pdfMesSelect').value);
+  const visaoBtn = document.querySelector('[onclick="togglePdfVisao(this)"].selected');
+  const isAcum = !visaoBtn || visaoBtn.dataset.val === 'acum';
+  const meses = isAcum ? Array.from({length:mesSelect},(_,i)=>i+1) : [mesSelect];
+  const periodo = isAcum ? 'acum' : 'mes';
 
-function calcPracaDataByHoteis(hoteisNomes, meses){
-  // Same as calcPracaData but takes explicit hotel list
-  let disp_orc=0, disp_r26=0, disp_r25=0;
-  let rns_orc=0, rns_r26=0, rns_r25=0;
-  let rec_orc=0, rec_r26=0, rec_r25=0;
-  hoteisNomes.forEach(nome=>{
-    const h = DB.hotels.find(x=>x.nome===nome); if(!h) return;
-    meses.forEach(m=>{
-      const sm=String(m), dias=parseInt(DB.dias_mes[sm]);
-      const pm26=h.pool_mensal_2026||h.pool_mensal, pm25=h.pool_mensal_2025||h.pool_mensal;
-      const p26=pm26?(pm26[sm]||h.pool):h.pool, p25=pm25?(pm25[sm]||h.pool):h.pool;
-      disp_orc+=p26*dias; disp_r26+=p26*dias; disp_r25+=p25*dias;
-      rns_orc+=DB.dia_orc26[nome]?.[sm]||0; rns_r26+=DB.dia_r26[nome]?.[sm]||0; rns_r25+=DB.dia_r25[nome]?.[sm]||0;
-      rec_orc+=DB.rec_orc26[nome]?.[sm]||0; rec_r26+=DB.rec_r26[nome]?.[sm]||0; rec_r25+=DB.rec_r25[nome]?.[sm]||0;
-    });
-  });
-  const occ_orc=disp_orc>0?rns_orc/disp_orc:0, occ_r26=disp_r26>0?rns_r26/disp_r26:0, occ_r25=disp_r25>0?rns_r25/disp_r25:0;
-  const dm_orc=rns_orc>0?rec_orc/rns_orc:0, dm_r26=rns_r26>0?rec_r26/rns_r26:0, dm_r25=rns_r25>0?rec_r25/rns_r25:0;
-  return {
-    occ:{orc:occ_orc,r26:occ_r26,r25:occ_r25},
-    dm: {orc:dm_orc, r26:dm_r26, r25:dm_r25},
-    rev:{orc:dm_orc*occ_orc,r26:dm_r26*occ_r26,r25:dm_r25*occ_r25},
-    rec:{orc:rec_orc,r26:rec_r26,r25:rec_r25},
-  };
-}
+  const grupoBtn = document.querySelector('[onclick="setPdfGrupo(this)"].selected');
+  const grupo = grupoBtn ? grupoBtn.dataset.val : 'praca';
+  const grupoSel = [...document.querySelectorAll('#pdfGrupoLista .selected')].map(b=>b.dataset.val);
 
-function calcPracaData(praca, meses, hoteisSel){
-  // Hotels in this praca (or filtered subset)
-  let hoteis = DB.hotels.filter(h => h.praca === praca);
-  if(hoteisSel.length > 0) hoteis = hoteis.filter(h => hoteisSel.includes(h.nome));
+  // Map grupo selection to pracas/regionais/hoteis
+  const pracas    = grupo==='praca'    ? grupoSel : [...new Set(DB.hotels.filter(h=>grupoSel.includes(h[grupo==='modelo'?'modelo':'regional'])).map(h=>h.praca))];
+  const regionais = grupo==='regional' ? grupoSel : ['R1','R2','R3'];
+  const hoteisGrf = grupo==='hotel'    ? grupoSel : [];
 
-  const sm_list = meses.map(String);
-  let disp_orc=0, disp_r26=0, disp_r25=0;
-  let rns_orc=0, rns_r26=0, rns_r25=0;
-  let rec_orc=0, rec_r26=0, rec_r25=0;
+  const indicadores = [...document.querySelectorAll('#pdfSecGraficos [data-val]')].filter(b=>b.classList.contains('selected')&&['occ','dm','rev','rec'].includes(b.dataset.val)).map(b=>b.dataset.val);
+  const series      = [...document.querySelectorAll('#pdfSecGraficos [data-val]')].filter(b=>b.classList.contains('selected')&&['orc','r26','r25'].includes(b.dataset.val)).map(b=>b.dataset.val);
 
-  hoteis.forEach(h=>{
-    meses.forEach(m=>{
-      const sm = String(m);
-      const dias = parseInt(DB.dias_mes[sm]);
-      const pm26 = h.pool_mensal_2026 || h.pool_mensal;
-      const pm25 = h.pool_mensal_2025 || h.pool_mensal;
-      const p26 = pm26 ? (pm26[sm] || h.pool) : h.pool;
-      const p25 = pm25 ? (pm25[sm] || h.pool) : h.pool;
-      disp_orc += p26 * dias;
-      disp_r26 += p26 * dias;
-      disp_r25 += p25 * dias;
-      rns_orc  += DB.dia_orc26[h.nome]?.[sm] || 0;
-      rns_r26  += DB.dia_r26[h.nome]?.[sm] || 0;
-      rns_r25  += DB.dia_r25[h.nome]?.[sm] || 0;
-      rec_orc  += DB.rec_orc26[h.nome]?.[sm] || 0;
-      rec_r26  += DB.rec_r26[h.nome]?.[sm] || 0;
-      rec_r25  += DB.rec_r25[h.nome]?.[sm] || 0;
-    });
-  });
+  const orientBtn = document.querySelector('[onclick="togglePdfOrient(this)"].selected');
+  const orientation = orientBtn ? orientBtn.dataset.val : 'landscape';
 
-  const occ_orc = disp_orc > 0 ? rns_orc / disp_orc : 0;
-  const occ_r26 = disp_r26 > 0 ? rns_r26 / disp_r26 : 0;
-  const occ_r25 = disp_r25 > 0 ? rns_r25 / disp_r25 : 0;
-  const dm_orc  = rns_orc  > 0 ? rec_orc / rns_orc  : 0;
-  const dm_r26  = rns_r26  > 0 ? rec_r26 / rns_r26  : 0;
-  const dm_r25  = rns_r25  > 0 ? rec_r25 / rns_r25  : 0;
-  const rev_orc = dm_orc * occ_orc;
-  const rev_r26 = dm_r26 * occ_r26;
-  const rev_r25 = dm_r25 * occ_r25;
+  const anoAntBtn = document.querySelector('[onclick="togglePdfAnoAnt(this)"].selected');
+  const anoAnt = anoAntBtn && anoAntBtn.dataset.val !== 'none' ? anoAntBtn.dataset.val : null;
 
-  return {
-    occ: {orc: occ_orc, r26: occ_r26, r25: occ_r25},
-    dm:  {orc: dm_orc,  r26: dm_r26,  r25: dm_r25},
-    rev: {orc: rev_orc, r26: rev_r26, r25: rev_r25},
-    rec: {orc: rec_orc, r26: rec_r26, r25: rec_r25},
-  };
-}
-
-function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
-  const colors={orc:'#2a606a',r26:'#b4d4df',r25:'#c8c0b8'};
-  const labels={orc:'Orçado',r26:'Realizado',r25:'Real. 2025'};
-  const BASE = Math.round(W * 0.032);
-  const LEGEND_PX = BASE, VALUE_PX = Math.round(BASE * 1.15);
-  const PL=W*0.07,PR=W*0.07,PT=H*0.24,PB=H*0.10;
-  const cW=W-PL-PR,cH=H-PT-PB;
-  const n=series.length,tw=cW*0.48,gap=n>1?tw*0.18:0,bW=(tw-(n-1)*gap)/n;
-  const sx=PL+(cW-tw)/2,maxV=Math.max(...series.map(s=>vals[s]||0))*1.28||1;
-  series.forEach((s,i)=>{
-    const v=vals[s]||0,bH=Math.max(4,(v/maxV)*cH),bX=sx+i*(bW+gap),bY=PT+cH-bH,r=Math.min(bW*0.08,10);
-    ctx.fillStyle=colors[s];
-    ctx.beginPath();ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);
-    ctx.arcTo(bX+bW,bY,bX+bW,bY+r,r);ctx.lineTo(bX+bW,bY+bH);
-    ctx.lineTo(bX,bY+bH);ctx.arcTo(bX,bY,bX+r,bY,r);ctx.closePath();ctx.fill();
-    ctx.font=`bold ${VALUE_PX}px Inter,Arial,sans-serif`;
-    ctx.fillStyle='#022a22';ctx.textAlign='center';
-    ctx.fillText(fmtFn(v),bX+bW/2,bY-VALUE_PX*0.35);
-  });
-  ctx.strokeStyle='rgba(10,45,35,0.15)';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(PL,PT+cH);ctx.lineTo(PL+cW,PT+cH);ctx.stroke();
-  ctx.font=`${LEGEND_PX}px Inter,Arial,sans-serif`;
-  const dotR=LEGEND_PX*0.38,dotGap=dotR*2.5+8,iGap=LEGEND_PX*1.2;
-  const totW=series.reduce((s2,s)=>s2+dotGap+ctx.measureText(labels[s]).width+iGap,0)-iGap;
-  let lx=(W-totW)/2,ly=PT*0.5;
-  series.forEach(s=>{
-    ctx.fillStyle=colors[s];ctx.beginPath();ctx.arc(lx+dotR,ly+LEGEND_PX*0.1,dotR,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#4a6a6e';ctx.textAlign='left';
-    ctx.fillText(labels[s],lx+dotGap,ly+LEGEND_PX*0.38);
-    lx+=dotGap+ctx.measureText(labels[s]).width+iGap;
-  });
-}
-
-
-// ── PDF HELPERS ──
-
-function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
-  const BAR_H = 20;
-  pdf.setFillColor(2, 42, 34);
-  pdf.rect(0, 0, PW, BAR_H, 'F');
-
-  pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(255,255,255);
-  pdf.text(titulo.toUpperCase(), MARGIN, 13);
-
-  pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
-  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 13, {align:'right'});
-
-  pdf.setDrawColor(42, 96, 106); pdf.setLineWidth(0.4);
-  pdf.line(0, BAR_H, PW, BAR_H);
-
-  // Footer: small text, centered, muted
-  pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(160,170,168);
-  pdf.text('LAGHETTO HOTÉIS', PW/2, PH - 5, {align:'center'});
-}
-
-function tableToCanvas(el, W, H){
-  return new Promise(resolve=>{
-    if(!window.html2canvas){ resolve(null); return; }
-    html2canvas(el,{backgroundColor:'#ffffff',scale:2,useCORS:true,logging:false,width:el.scrollWidth,windowWidth:el.scrollWidth+100})
-      .then(canvas=>resolve(canvas)).catch(()=>resolve(null));
-  });
-}
-
-async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
-  return new Promise(async resolve=>{
-    pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
-    // Switch to tabela tab temporarily
-    const prevClass = document.body.className;
-    document.body.className = 'tab-tabela';
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById('view-tabela').classList.add('active');
-    await new Promise(r=>setTimeout(r,100));
-
-    const el = document.getElementById('tableWrap');
-    if(!el){ document.body.className=prevClass; resolve(); return; }
-    if(!window.html2canvas){ document.body.className=prevClass; resolve(); return; }
-
-    html2canvas(el,{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,
-      width:el.scrollWidth,windowWidth:el.scrollWidth+100})
-    .then(canvas=>{
-      const imgW=PW-2*MARGIN;
-      const imgH=Math.min(PH-30,(canvas.height/canvas.width)*imgW);
-      pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,26,imgW,imgH);
-      document.body.className=prevClass;
-      resolve();
-    }).catch(()=>{ document.body.className=prevClass; resolve(); });
-  });
-}
-
-function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
-  return new Promise(async resolve=>{
-    pdfHeader(pdf, 'Comparativo', periodoFull, PW, PH, MARGIN);
-    const prevClass = document.body.className;
-    document.body.className = 'tab-comparativo';
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById('view-comparativo').classList.add('active');
-    renderComparativo();
-    await new Promise(r=>setTimeout(r,200));
-
-    const el = document.getElementById('compContent');
-    if(!el||!el.innerHTML.trim()){ document.body.className=prevClass; resolve(); return; }
-    if(!window.html2canvas){ document.body.className=prevClass; resolve(); return; }
-
-    const tables = el.querySelectorAll('.comp-table-wrap');
-    let y = 26;
-    const captureNext = (idx)=>{
-      if(idx>=tables.length){ document.body.className=prevClass; resolve(); return; }
-      html2canvas(tables[idx],{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,
-        width:tables[idx].scrollWidth,windowWidth:tables[idx].scrollWidth+100})
-      .then(canvas=>{
-        const imgW=PW-2*MARGIN;
-        const imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
-        if(y+imgH>PH-10){ pdf.addPage(); pdfHeader(pdf,'Comparativo',periodoFull,PW,PH,MARGIN); y=26; }
-        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
-        y+=imgH+6;
-        captureNext(idx+1);
-      }).catch(()=>captureNext(idx+1));
-    };
-    captureNext(0);
-  });
-}
-
-function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
-  return new Promise(async resolve=>{
-    pdfHeader(pdf, 'Resultado', periodoFull, PW, PH, MARGIN);
-    const prevClass = document.body.className;
-    document.body.className = 'tab-resultado';
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById('view-resultado').classList.add('active');
-    renderResultado();
-    await new Promise(r=>setTimeout(r,200));
-
-    const el = document.getElementById('resContent');
-    if(!el||!el.innerHTML.trim()){ document.body.className=prevClass; resolve(); return; }
-    if(!window.html2canvas){ document.body.className=prevClass; resolve(); return; }
-
-    const tables = el.querySelectorAll('.res-table-wrap');
-    let y = 26;
-    const captureNext = (idx)=>{
-      if(idx>=tables.length){ document.body.className=prevClass; resolve(); return; }
-      html2canvas(tables[idx],{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,
-        width:tables[idx].scrollWidth,windowWidth:tables[idx].scrollWidth+100})
-      .then(canvas=>{
-        const imgW=PW-2*MARGIN;
-        const imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
-        if(y+imgH>PH-10){ pdf.addPage(); pdfHeader(pdf,'Resultado',periodoFull,PW,PH,MARGIN); y=26; }
-        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
-        y+=imgH+6;
-        captureNext(idx+1);
-      }).catch(()=>captureNext(idx+1));
-    };
-    captureNext(0);
-  });
+  return {conteudo, meses, periodo, grupo, grupoSel, pracas, regionais, hoteisGrf, indicadores, series, orientation, anoAnt, mesInicio:mesSelect, mesFim:mesSelect};
 }
 
 
