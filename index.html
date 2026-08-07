@@ -2247,10 +2247,6 @@ function downloadResultado(){
   hr.style.cssText='height:2px;background:linear-gradient(90deg,#0a2d23,#b4d4df,transparent);margin-bottom:16px';
   wrap.appendChild(hr);
   wrap.appendChild(el.cloneNode(true));
-  const footer=document.createElement('div');
-  footer.style.cssText='margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent=`Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
   document.body.appendChild(wrap);
   html2canvas(wrap,{backgroundColor:'#f0f5fa',scale:2,useCORS:true,logging:false,width:wrap.scrollWidth,windowWidth:wrap.scrollWidth+100})
     .then(canvas=>{
@@ -2486,7 +2482,7 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
 
     // Value label above bar — scale font with canvas size
     const fmt = fmtFn(v);
-    const fSize = Math.max(W * 0.025, Math.min(W * 0.04, bW * 0.35));
+    const fSize = Math.max(W * 0.035, Math.min(W * 0.055, bW * 0.5));
     ctx.font = `bold ${fSize}px Inter, Arial, sans-serif`;
     ctx.fillStyle = '#022a22';
     ctx.textAlign = 'center';
@@ -2503,7 +2499,7 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
 
   // Legend — centered at top
   const legItems = series.map(s => ({s, label: labels[s]}));
-  const legFSize = Math.max(W * 0.018, 11);
+  const legFSize = Math.max(W * 0.013, 9);
   ctx.font = `${legFSize}px Inter, Arial, sans-serif`;
   ctx.font = `${legFSize}px Inter, Arial, sans-serif`;
   const dotR = Math.max(W * 0.008, 5);
@@ -2528,38 +2524,28 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
 // ── PDF HELPERS ──
 
 function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
-  // Dark header bar
+  const BAR_H = 20, MID = 10;
+
   pdf.setFillColor(2, 42, 34);
-  pdf.rect(0, 0, PW, 22, 'F');
+  pdf.rect(0, 0, PW, BAR_H, 'F');
 
-  // Symbol icon — 9mm square, perfectly centered in 22mm bar
-  const symS = 9;
-  const barH  = 22;
-  const barMid = barH / 2;          // 11mm
-  const symY   = barMid - symS / 2; // top of image
-  try {
-    pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, symY, symS, symS);
-  } catch(e) {}
+  // Symbol — vertically centered
+  const SYM = 8;
+  try { pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, MID - SYM/2, SYM, SYM); } catch(e) {}
 
-  // Title — baseline aligned to symbol center (mid + half cap-height ≈ mid + 2mm)
-  const textBaseline = barMid + 2.2;
-  pdf.setFont('helvetica','bold');
-  pdf.setFontSize(13);
-  pdf.setTextColor(255, 255, 255);
-  pdf.text(titulo.toUpperCase(), MARGIN + symS + 3.5, textBaseline);
+  // Title — same vertical center
+  const FS = 12;
+  const baseline = MID + FS * 0.175;
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(FS); pdf.setTextColor(255,255,255);
+  pdf.text(titulo.toUpperCase(), MARGIN + SYM + 3, baseline);
 
-  // Period — right aligned, same baseline, light gray color
-  pdf.setFont('helvetica','bold');
-  pdf.setFontSize(9);
-  pdf.setTextColor(200, 210, 208);  // light gray, not blue
-  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, textBaseline, {align:'right'});
+  // Period — right, same baseline, light gray
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
+  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, baseline, {align:'right'});
 
-  // Thin divider line
-  pdf.setDrawColor(42, 96, 106);
-  pdf.setLineWidth(0.5);
-  pdf.line(0, 22, PW, 22);
-
-
+  // Divider
+  pdf.setDrawColor(42, 96, 106); pdf.setLineWidth(0.4);
+  pdf.line(0, BAR_H, PW, BAR_H);
 }
 
 function tableToCanvas(el, W, H){
@@ -2704,7 +2690,7 @@ async function generatePDF(){
 
       const imgData = canvas.toDataURL('image/png');
       const cx = MARGIN + ii * (chartW_mm + 8);
-      const cy = 26;
+      const cy = 23;
 
       // Chart border
       pdf.setDrawColor(212, 226, 232);
@@ -2716,13 +2702,13 @@ async function generatePDF(){
       pdf.setFont('helvetica','bold');
       pdf.setFontSize(9);
       pdf.setTextColor(2, 42, 34);
-      pdf.text(def.label, cx + 5, cy + 8);
+      pdf.text(def.label, cx + 5, cy + 7);
       // Unit badge (small pill)
       const badgeTxt = def.icon;
       pdf.setFontSize(7);
       const badgeW = 8, badgeH = 5;
       const labelW = pdf.getStringUnitWidth(def.label) * 9 / pdf.internal.scaleFactor;
-      const bx = cx + 6 + labelW + 2, by = cy + 3.5;
+      const bx = cx + 6 + labelW + 2, by = cy + 2.5;
       pdf.setFillColor(42, 96, 106);
       pdf.roundedRect(bx, by, badgeW, badgeH, 1.5, 1.5, 'F');
       pdf.setTextColor(255, 255, 255);
@@ -3679,10 +3665,6 @@ function downloadComparativo(){
   const content = el.cloneNode(true);
   wrap.appendChild(content);
 
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:12px;font-size:9px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
 
   document.body.appendChild(wrap);
 
@@ -3953,10 +3935,6 @@ function downloadTable(){
   }
 
   // Rodapé
-  const footer = document.createElement('div');
-  footer.style.cssText = 'margin-top:6px;font-size:8px;color:#8a9fa8;text-align:right;font-family:Inter,sans-serif';
-  footer.textContent = `Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`;
-  wrap.appendChild(footer);
 
   wrap.style.position = 'fixed';
   wrap.style.left = '-9999px';
