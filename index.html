@@ -569,10 +569,10 @@ body.tab-comparativo .main{padding-top:16px}
   </div>
 
   <!-- PDF MODAL -->
-  <div class="pdf-overlay" id="pdfOverlay" style="display:none" onclick="if(event.target===this)closePdfModal()">
+  <div class="pdf-overlay" id="pdfOverlay" onclick="if(event.target===this)closePdfModal()">
     <div class="pdf-modal">
       <div class="pdf-modal-header">
-        <div class="pdf-modal-title">📄 Gerar PDF por Praça</div>
+        <div class="pdf-modal-title">📄 Gerar PDF</div>
         <button class="pdf-modal-close" onclick="closePdfModal()">✕</button>
       </div>
       <div class="pdf-modal-body">
@@ -585,10 +585,13 @@ body.tab-comparativo .main{padding-top:16px}
             <label class="pdf-opt"><input type="checkbox" value="comparativo">⚖️ Comparativo</label>
             <label class="pdf-opt"><input type="checkbox" value="resultado">📋 Resultado</label>
           </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted);font-family:Inter,sans-serif">
+            Os filtros aplicados em cada aba serão usados automaticamente.
+          </div>
         </div>
 
-        <div class="pdf-section" id="pdfSecPracas">
-          <div class="pdf-section-title">Agrupar por</div>
+        <div class="pdf-section" id="pdfSecGraficos">
+          <div class="pdf-section-title">Gráficos — Agrupar por</div>
           <div class="pdf-options" style="margin-bottom:10px">
             <label class="pdf-opt selected" id="pdfGrpPraca"><input type="radio" name="pdfGrupo" value="praca" checked>Por Praça</label>
             <label class="pdf-opt" id="pdfGrpRegional"><input type="radio" name="pdfGrupo" value="regional">Por Regional</label>
@@ -596,7 +599,7 @@ body.tab-comparativo .main{padding-top:16px}
           </div>
 
           <div id="pdfListaPracas">
-            <div class="pdf-section-title" style="margin-top:8px">Praças</div>
+            <div class="pdf-section-title" style="margin-top:4px">Praças</div>
             <div class="pdf-options" id="pdfPracas">
               <label class="pdf-opt selected"><input type="checkbox" value="Gramado" checked>Gramado</label>
               <label class="pdf-opt selected"><input type="checkbox" value="Canela" checked>Canela</label>
@@ -607,56 +610,48 @@ body.tab-comparativo .main{padding-top:16px}
               <label class="pdf-opt selected"><input type="checkbox" value="São Paulo" checked>São Paulo</label>
             </div>
           </div>
-
           <div id="pdfListaRegionais" style="display:none">
-            <div class="pdf-section-title" style="margin-top:8px">Regionais</div>
+            <div class="pdf-section-title" style="margin-top:4px">Regionais</div>
             <div class="pdf-options" id="pdfRegionais">
               <label class="pdf-opt selected"><input type="checkbox" value="R1" checked>Regional 1</label>
               <label class="pdf-opt selected"><input type="checkbox" value="R2" checked>Regional 2</label>
               <label class="pdf-opt selected"><input type="checkbox" value="R3" checked>Regional 3</label>
             </div>
           </div>
-
           <div id="pdfListaHoteis2" style="display:none">
-            <div class="pdf-section-title" style="margin-top:8px">Hotéis</div>
-            <div class="pdf-options" id="pdfHoteisGrafico" style="max-height:120px;overflow-y:auto"></div>
+            <div class="pdf-section-title" style="margin-top:4px">Hotéis</div>
+            <div class="pdf-options" id="pdfHoteisGrafico" style="max-height:100px;overflow-y:auto"></div>
           </div>
-        </div>
 
-        <div class="pdf-section" id="pdfSecIndics">
-          <div class="pdf-section-title">Indicadores (Gráficos)</div>
+          <div class="pdf-section-title" style="margin-top:10px">Indicadores</div>
           <div class="pdf-options" id="pdfIndicadores">
             <label class="pdf-opt selected"><input type="checkbox" value="occ" checked>Ocupação</label>
             <label class="pdf-opt selected"><input type="checkbox" value="dm" checked>Diária Média</label>
             <label class="pdf-opt"><input type="checkbox" value="rev">RevPAR</label>
             <label class="pdf-opt"><input type="checkbox" value="rec">Receita</label>
           </div>
-        </div>
 
-        <div class="pdf-section" id="pdfSecSeries">
-          <div class="pdf-section-title">Séries (Gráficos)</div>
+          <div class="pdf-section-title" style="margin-top:10px">Séries</div>
           <div class="pdf-options" id="pdfSeries">
             <label class="pdf-opt selected"><input type="checkbox" value="orc" checked>Orçado 2026</label>
             <label class="pdf-opt selected"><input type="checkbox" value="r26" checked>Realizado 2026</label>
             <label class="pdf-opt"><input type="checkbox" value="r25">Realizado 2025</label>
           </div>
-        </div>
 
-        <div class="pdf-section">
-          <div class="pdf-section-title">Período</div>
-          <div class="pdf-options" id="pdfPeriodo">
+          <div class="pdf-section-title" style="margin-top:10px">Período</div>
+          <div class="pdf-options" style="margin-bottom:8px">
             <label class="pdf-opt" id="pdfOptMes"><input type="radio" name="pdfPeriodo" value="mes">Mês específico</label>
             <label class="pdf-opt selected" id="pdfOptAcum"><input type="radio" name="pdfPeriodo" value="acum" checked>Acumulado</label>
           </div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap" id="pdfMesSelector">
+          <div style="display:flex;gap:8px;flex-wrap:wrap" id="pdfMesSelector">
             <select id="pdfMesInicio" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
               <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-              <option value="4">Abril</option><option value="5">Maio</option><option value="6" selected>Junho</option>
-              <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+              <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+              <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
               <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
             </select>
-            <span id="pdfAteLabel" style="display:flex;align-items:center;font-size:12px;color:var(--muted);font-weight:600">até</span>
-            <select id="pdfMesFim" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
+            <span id="pdfAteLabel" style="display:none;align-items:center;font-size:12px;color:var(--muted);font-weight:600">até</span>
+            <select id="pdfMesFim" style="display:none;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Inter,sans-serif;font-size:12px;font-weight:600;color:#022a22;background:var(--bg)">
               <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
               <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
               <option value="7" selected>Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
@@ -667,15 +662,10 @@ body.tab-comparativo .main{padding-top:16px}
 
         <div class="pdf-section">
           <div class="pdf-section-title">Orientação</div>
-          <div class="pdf-options" id="pdfOrientacao">
+          <div class="pdf-options">
             <label class="pdf-opt selected" id="pdfOptLandscape"><input type="radio" name="pdfOrientacao" value="landscape" checked>🖼 Paisagem (A4)</label>
             <label class="pdf-opt" id="pdfOptPortrait"><input type="radio" name="pdfOrientacao" value="portrait">📄 Retrato (A4)</label>
           </div>
-        </div>
-
-        <div class="pdf-section">
-          <div class="pdf-section-title">Hotéis individuais (opcional)</div>
-          <div class="pdf-options" id="pdfHoteis" style="max-height:120px;overflow-y:auto"></div>
         </div>
 
         <div id="pdfProgress" style="display:none;margin-top:12px">
@@ -691,6 +681,7 @@ body.tab-comparativo .main{padding-top:16px}
       </div>
     </div>
   </div>
+
 
   <!-- GRÁFICOS -->
   <div class="view" id="view-graficos">
@@ -2270,78 +2261,52 @@ const MESES_NMF_PDF = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 const MESES_ABR_PDF = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
 function openPdfModal(){
-  // Populate hotéis checkboxes
-  const wrap = document.getElementById('pdfHoteis');
-  wrap.innerHTML = '';
-  DB.hotels.forEach(h=>{
-    const lbl = document.createElement('label');
-    lbl.className = 'pdf-opt';
-    lbl.innerHTML = `<input type="checkbox" value="${h.nome}">${h.nome}`;
-    lbl.querySelector('input').addEventListener('change', e=>{
-      lbl.classList.toggle('selected', e.target.checked);
-    });
-    wrap.appendChild(lbl);
-  });
-
-  // Toggle options checkboxes
+  // Checkbox toggle
   document.querySelectorAll('.pdf-opt input[type=checkbox]').forEach(chk=>{
     chk.addEventListener('change', e=>{
       e.target.closest('.pdf-opt').classList.toggle('selected', e.target.checked);
+      updatePdfSections();
     });
   });
+  // Radio toggle
   document.querySelectorAll('.pdf-opt input[type=radio]').forEach(rad=>{
     rad.addEventListener('change', e=>{
       document.querySelectorAll(`input[name="${e.target.name}"]`).forEach(r=>{
         r.closest('.pdf-opt').classList.toggle('selected', r.checked);
       });
-      if(e.target.name === 'pdfPeriodo'){
-        const isMes = e.target.value === 'mes';
-        document.getElementById('pdfAteLabel').style.display = isMes ? 'flex' : 'none';
-        document.getElementById('pdfMesFim').style.display = isMes ? '' : 'none';
+      if(e.target.name==='pdfPeriodo'){
+        const isMes = e.target.value==='mes';
+        document.getElementById('pdfAteLabel').style.display = isMes?'flex':'none';
+        document.getElementById('pdfMesFim').style.display = isMes?'':'none';
       }
-      if(e.target.name === 'pdfGrupo'){
-        document.getElementById('pdfListaPracas').style.display    = e.target.value==='praca'    ? '' : 'none';
-        document.getElementById('pdfListaRegionais').style.display = e.target.value==='regional' ? '' : 'none';
-        document.getElementById('pdfListaHoteis2').style.display   = e.target.value==='hotel'    ? '' : 'none';
+      if(e.target.name==='pdfGrupo'){
+        document.getElementById('pdfListaPracas').style.display    = e.target.value==='praca'    ?'':'none';
+        document.getElementById('pdfListaRegionais').style.display = e.target.value==='regional' ?'':'none';
+        document.getElementById('pdfListaHoteis2').style.display   = e.target.value==='hotel'    ?'':'none';
       }
     });
   });
 
-  // Populate hotel list for "Por Hotel" option
-  const hWrap2 = document.getElementById('pdfHoteisGrafico');
-  if(hWrap2){
-    hWrap2.innerHTML = '';
+  // Populate hotel list
+  const hWrap = document.getElementById('pdfHoteisGrafico');
+  if(hWrap && !hWrap.childElementCount){
     DB.hotels.forEach(h=>{
-      const lbl = document.createElement('label');
-      lbl.className = 'pdf-opt';
-      lbl.innerHTML = `<input type="checkbox" value="${h.nome}">${h.nome}`;
-      lbl.querySelector('input').addEventListener('change', e=>{
-        lbl.classList.toggle('selected', e.target.checked);
-      });
-      hWrap2.appendChild(lbl);
+      const lbl=document.createElement('label'); lbl.className='pdf-opt';
+      lbl.innerHTML=`<input type="checkbox" value="${h.nome}">${h.nome}`;
+      lbl.querySelector('input').addEventListener('change',e=>lbl.classList.toggle('selected',e.target.checked));
+      hWrap.appendChild(lbl);
     });
   }
 
-  // Init period display
-  const periodoVal = document.querySelector('input[name="pdfPeriodo"]:checked').value;
-  document.getElementById('pdfAteLabel').style.display = periodoVal === 'mes' ? 'flex' : 'none';
-  document.getElementById('pdfMesFim').style.display = periodoVal === 'mes' ? '' : 'none';
-
-  document.getElementById('pdfOverlay').style.display = 'flex';
-
-  // Show/hide sections based on content
-  function updateSectionVisibility(){
-    const sel = [...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
-    const hasPracas = sel.includes('graficos');
-    document.getElementById('pdfSecPracas').style.display = hasPracas ? '' : 'none';
-    document.getElementById('pdfSecIndics').style.display = hasPracas ? '' : 'none';
-    document.getElementById('pdfSecSeries').style.display = hasPracas ? '' : 'none';
-  }
-  document.querySelectorAll('#pdfConteudo input').forEach(chk=>{
-    chk.addEventListener('change', ()=>{ chk.closest('.pdf-opt').classList.toggle('selected',chk.checked); updateSectionVisibility(); });
-  });
-  updateSectionVisibility();
+  updatePdfSections();
+  document.getElementById('pdfOverlay').style.display='flex';
 }
+
+function updatePdfSections(){
+  const sel=[...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
+  document.getElementById('pdfSecGraficos').style.display = sel.includes('graficos')?'':'none';
+}
+
 
 function closePdfModal(){
   document.getElementById('pdfOverlay').style.display = 'none';
@@ -2503,8 +2468,7 @@ function tableToCanvas(el, W, H){
   });
 }
 
-async 
-function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
   return new Promise(async resolve=>{
     pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
     // Switch to tabela tab temporarily
