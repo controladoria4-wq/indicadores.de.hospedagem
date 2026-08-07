@@ -579,15 +579,16 @@ body.tab-comparativo .main{padding-top:16px}
 
         <div class="pdf-section">
           <div class="pdf-section-title">O que exportar</div>
-          <div class="pdf-options" id="pdfConteudo">
-            <label class="pdf-opt selected"><input type="checkbox" value="analitico" checked>📊 Analítico</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="graficos" checked>📈 Gráficos por Praça</label>
-            <label class="pdf-opt"><input type="checkbox" value="comparativo">⚖️ Comparativo</label>
-            <label class="pdf-opt"><input type="checkbox" value="resultado">📋 Resultado</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px" id="pdfConteudoBtns">
+            <button type="button" class="pdf-opt selected" data-val="analitico" onclick="togglePdfConteudo(this)">📊 Analítico</button>
+            <button type="button" class="pdf-opt" data-val="graficos" onclick="togglePdfConteudo(this)">📈 Gráficos por Praça</button>
+            <button type="button" class="pdf-opt" data-val="comparativo" onclick="togglePdfConteudo(this)">⚖️ Comparativo</button>
+            <button type="button" class="pdf-opt" data-val="resultado" onclick="togglePdfConteudo(this)">📋 Resultado</button>
           </div>
           <div style="margin-top:8px;font-size:11px;color:var(--muted);font-family:Inter,sans-serif">
             Os filtros aplicados em cada aba serão usados automaticamente.
           </div>
+          <input type="hidden" id="pdfConteudoHidden">
         </div>
 
         <div class="pdf-section" id="pdfSecGraficos">
@@ -2281,23 +2282,47 @@ function openPdfModal(){
 }
 
 function updatePdfSections(){
-  const sel=[...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
+  const sel=[...document.querySelectorAll('#pdfConteudoBtns .selected')].map(b=>b.dataset.val);
   document.getElementById('pdfSecGraficos').style.display = sel.includes('graficos')?'':'none';
 }
 
-// Global click handler for pdf-opt labels (handles all static ones)
+// Global click handler for pdf-opt labels
 document.addEventListener('click', function(e){
   const lbl = e.target.closest('.pdf-opt');
-  if(!lbl || !document.getElementById('pdfOverlay').contains(lbl)) return;
+  if(!lbl) return;
+  const overlay = document.getElementById('pdfOverlay');
+  if(!overlay || !overlay.contains(lbl)) return;
   const input = lbl.querySelector('input');
   if(!input) return;
 
+  // Prevent double-firing when clicking directly on input
+  if(e.target === input) {
+    setTimeout(()=>{
+      syncPdfOpt(input);
+    }, 0);
+    return;
+  }
+
+  // Toggle manually when clicking on label text
+  e.preventDefault();
   if(input.type === 'checkbox'){
-    // Already handled by browser — just sync class and sections
-    lbl.classList.toggle('selected', input.checked);
+    input.checked = !input.checked;
+  } else if(input.type === 'radio'){
+    input.checked = true;
+  }
+  syncPdfOpt(input);
+});
+
+function togglePdfConteudo(btn){
+  btn.classList.toggle('selected');
+  updatePdfSections();
+}
+
+function syncPdfOpt(input){
+  if(input.type === 'checkbox'){
+    input.closest('.pdf-opt').classList.toggle('selected', input.checked);
     updatePdfSections();
   } else if(input.type === 'radio'){
-    // Sync all radios in group
     document.querySelectorAll(`input[name="${input.name}"]`).forEach(r=>{
       r.closest('.pdf-opt').classList.toggle('selected', r.checked);
     });
@@ -2307,15 +2332,12 @@ document.addEventListener('click', function(e){
       document.getElementById('pdfMesFim').style.display = isMes?'':'none';
     }
     if(input.name==='pdfGrupo'){
-      document.getElementById('pdfListaPracas').style.display    = input.value==='praca'    ?'':'none';
-      document.getElementById('pdfListaRegionais').style.display = input.value==='regional' ?'':'none';
-      document.getElementById('pdfListaHoteis2').style.display   = input.value==='hotel'    ?'':'none';
-    }
-    if(input.name==='pdfOrientacao'){
-      // nothing extra needed
+      document.getElementById('pdfListaPracas').style.display    = input.value==='praca'?'':'none';
+      document.getElementById('pdfListaRegionais').style.display = input.value==='regional'?'':'none';
+      document.getElementById('pdfListaHoteis2').style.display   = input.value==='hotel'?'':'none';
     }
   }
-});
+}
 
 
 function closePdfModal(){
@@ -2572,7 +2594,7 @@ function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
 
 
 async function generatePDF(){
-  const conteudo = [...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
+  const conteudo = [...document.querySelectorAll('#pdfConteudoBtns .selected')].map(b=>b.dataset.val);
   if(!conteudo.length){ alert('Selecione ao menos um conteúdo.'); return; }
   const opts = getPdfOptions();
   if(conteudo.includes('graficos')){
