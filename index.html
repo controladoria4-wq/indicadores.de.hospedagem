@@ -588,15 +588,38 @@ body.tab-comparativo .main{padding-top:16px}
         </div>
 
         <div class="pdf-section" id="pdfSecPracas">
-          <div class="pdf-section-title">Praças</div>
-          <div class="pdf-options" id="pdfPracas">
-            <label class="pdf-opt selected"><input type="checkbox" value="Gramado" checked>Gramado</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="Canela" checked>Canela</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="Rio de Janeiro" checked>Rio de Janeiro</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="Porto Alegre" checked>Porto Alegre</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="Bento Gonçalves" checked>Bento Gonçalves</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="Rio Grande" checked>Rio Grande</label>
-            <label class="pdf-opt selected"><input type="checkbox" value="São Paulo" checked>São Paulo</label>
+          <div class="pdf-section-title">Agrupar por</div>
+          <div class="pdf-options" style="margin-bottom:10px">
+            <label class="pdf-opt selected" id="pdfGrpPraca"><input type="radio" name="pdfGrupo" value="praca" checked>Por Praça</label>
+            <label class="pdf-opt" id="pdfGrpRegional"><input type="radio" name="pdfGrupo" value="regional">Por Regional</label>
+            <label class="pdf-opt" id="pdfGrpHotel"><input type="radio" name="pdfGrupo" value="hotel">Por Hotel</label>
+          </div>
+
+          <div id="pdfListaPracas">
+            <div class="pdf-section-title" style="margin-top:8px">Praças</div>
+            <div class="pdf-options" id="pdfPracas">
+              <label class="pdf-opt selected"><input type="checkbox" value="Gramado" checked>Gramado</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="Canela" checked>Canela</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="Rio de Janeiro" checked>Rio de Janeiro</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="Porto Alegre" checked>Porto Alegre</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="Bento Gonçalves" checked>Bento Gonçalves</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="Rio Grande" checked>Rio Grande</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="São Paulo" checked>São Paulo</label>
+            </div>
+          </div>
+
+          <div id="pdfListaRegionais" style="display:none">
+            <div class="pdf-section-title" style="margin-top:8px">Regionais</div>
+            <div class="pdf-options" id="pdfRegionais">
+              <label class="pdf-opt selected"><input type="checkbox" value="R1" checked>Regional 1</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="R2" checked>Regional 2</label>
+              <label class="pdf-opt selected"><input type="checkbox" value="R3" checked>Regional 3</label>
+            </div>
+          </div>
+
+          <div id="pdfListaHoteis2" style="display:none">
+            <div class="pdf-section-title" style="margin-top:8px">Hotéis</div>
+            <div class="pdf-options" id="pdfHoteisGrafico" style="max-height:120px;overflow-y:auto"></div>
           </div>
         </div>
 
@@ -2263,7 +2286,7 @@ function openPdfModal(){
     wrap.appendChild(lbl);
   });
 
-  // Toggle options
+  // Toggle options checkboxes
   document.querySelectorAll('.pdf-opt input[type=checkbox]').forEach(chk=>{
     chk.addEventListener('change', e=>{
       e.target.closest('.pdf-opt').classList.toggle('selected', e.target.checked);
@@ -2279,8 +2302,28 @@ function openPdfModal(){
         document.getElementById('pdfAteLabel').style.display = isMes ? 'flex' : 'none';
         document.getElementById('pdfMesFim').style.display = isMes ? '' : 'none';
       }
+      if(e.target.name === 'pdfGrupo'){
+        document.getElementById('pdfListaPracas').style.display    = e.target.value==='praca'    ? '' : 'none';
+        document.getElementById('pdfListaRegionais').style.display = e.target.value==='regional' ? '' : 'none';
+        document.getElementById('pdfListaHoteis2').style.display   = e.target.value==='hotel'    ? '' : 'none';
+      }
     });
   });
+
+  // Populate hotel list for "Por Hotel" option
+  const hWrap2 = document.getElementById('pdfHoteisGrafico');
+  if(hWrap2){
+    hWrap2.innerHTML = '';
+    DB.hotels.forEach(h=>{
+      const lbl = document.createElement('label');
+      lbl.className = 'pdf-opt';
+      lbl.innerHTML = `<input type="checkbox" value="${h.nome}">${h.nome}`;
+      lbl.querySelector('input').addEventListener('change', e=>{
+        lbl.classList.toggle('selected', e.target.checked);
+      });
+      hWrap2.appendChild(lbl);
+    });
+  }
 
   // Init period display
   const periodoVal = document.querySelector('input[name="pdfPeriodo"]:checked').value;
@@ -2308,7 +2351,10 @@ function closePdfModal(){
 }
 
 function getPdfOptions(){
-  const pracas = [...document.querySelectorAll('#pdfPracas input:checked')].map(i=>i.value);
+  const grupo = document.querySelector('input[name="pdfGrupo"]:checked')?.value || 'praca';
+  const pracas    = [...document.querySelectorAll('#pdfPracas input:checked')].map(i=>i.value);
+  const regionais = [...document.querySelectorAll('#pdfRegionais input:checked')].map(i=>i.value);
+  const hoteisGrf = [...document.querySelectorAll('#pdfHoteisGrafico input:checked')].map(i=>i.value);
   const indicadores = [...document.querySelectorAll('#pdfIndicadores input:checked')].map(i=>i.value);
   const series = [...document.querySelectorAll('#pdfSeries input:checked')].map(i=>i.value);
   const hoteisSel = [...document.querySelectorAll('#pdfHoteis input:checked')].map(i=>i.value);
@@ -2318,7 +2364,33 @@ function getPdfOptions(){
   const meses = periodo === 'acum'
     ? Array.from({length: mesInicio}, (_,i) => i+1)
     : Array.from({length: mesFim - mesInicio + 1}, (_,i) => mesInicio + i);
-  return {pracas, indicadores, series, hoteisSel, periodo, mesInicio, mesFim, meses};
+  return {grupo, pracas, regionais, hoteisGrf, indicadores, series, hoteisSel, periodo, mesInicio, mesFim, meses};
+}
+
+function calcPracaDataByHoteis(hoteisNomes, meses){
+  // Same as calcPracaData but takes explicit hotel list
+  let disp_orc=0, disp_r26=0, disp_r25=0;
+  let rns_orc=0, rns_r26=0, rns_r25=0;
+  let rec_orc=0, rec_r26=0, rec_r25=0;
+  hoteisNomes.forEach(nome=>{
+    const h = DB.hotels.find(x=>x.nome===nome); if(!h) return;
+    meses.forEach(m=>{
+      const sm=String(m), dias=parseInt(DB.dias_mes[sm]);
+      const pm26=h.pool_mensal_2026||h.pool_mensal, pm25=h.pool_mensal_2025||h.pool_mensal;
+      const p26=pm26?(pm26[sm]||h.pool):h.pool, p25=pm25?(pm25[sm]||h.pool):h.pool;
+      disp_orc+=p26*dias; disp_r26+=p26*dias; disp_r25+=p25*dias;
+      rns_orc+=DB.dia_orc26[nome]?.[sm]||0; rns_r26+=DB.dia_r26[nome]?.[sm]||0; rns_r25+=DB.dia_r25[nome]?.[sm]||0;
+      rec_orc+=DB.rec_orc26[nome]?.[sm]||0; rec_r26+=DB.rec_r26[nome]?.[sm]||0; rec_r25+=DB.rec_r25[nome]?.[sm]||0;
+    });
+  });
+  const occ_orc=disp_orc>0?rns_orc/disp_orc:0, occ_r26=disp_r26>0?rns_r26/disp_r26:0, occ_r25=disp_r25>0?rns_r25/disp_r25:0;
+  const dm_orc=rns_orc>0?rec_orc/rns_orc:0, dm_r26=rns_r26>0?rec_r26/rns_r26:0, dm_r25=rns_r25>0?rec_r25/rns_r25:0;
+  return {
+    occ:{orc:occ_orc,r26:occ_r26,r25:occ_r25},
+    dm: {orc:dm_orc, r26:dm_r26, r25:dm_r25},
+    rev:{orc:dm_orc*occ_orc,r26:dm_r26*occ_r26,r25:dm_r25*occ_r25},
+    rec:{orc:rec_orc,r26:rec_r26,r25:rec_r25},
+  };
 }
 
 function calcPracaData(praca, meses, hoteisSel){
@@ -2456,39 +2528,34 @@ function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
   pdf.setFillColor(2, 42, 34);
   pdf.rect(0, 0, PW, 22, 'F');
 
-  // Symbol icon — small, left, before title
-  const symS = 10; // 10mm square
-  const symY = (22 - symS) / 2;
+  // Symbol icon — 9mm square, perfectly centered in 22mm bar
+  const symS = 9;
+  const barH  = 22;
+  const barMid = barH / 2;          // 11mm
+  const symY   = barMid - symS / 2; // top of image
   try {
     pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, symY, symS, symS);
   } catch(e) {}
 
-  // Title — left, after symbol
+  // Title — baseline aligned to symbol center (mid + half cap-height ≈ mid + 2mm)
+  const textBaseline = barMid + 2.2;
   pdf.setFont('helvetica','bold');
   pdf.setFontSize(13);
   pdf.setTextColor(255, 255, 255);
-  pdf.text(titulo.toUpperCase(), MARGIN + symS + 4, 14);
+  pdf.text(titulo.toUpperCase(), MARGIN + symS + 3.5, textBaseline);
 
-  // Period — right aligned, vertically centered
+  // Period — right aligned, same baseline, light gray color
   pdf.setFont('helvetica','bold');
   pdf.setFontSize(9);
-  pdf.setTextColor(180, 212, 223);
-  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 14, {align:'right'});
+  pdf.setTextColor(200, 210, 208);  // light gray, not blue
+  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, textBaseline, {align:'right'});
 
   // Thin divider line
   pdf.setDrawColor(42, 96, 106);
   pdf.setLineWidth(0.5);
   pdf.line(0, 22, PW, 22);
 
-  // Footer
-  pdf.setFont('helvetica','normal');
-  pdf.setFontSize(7);
-  pdf.setTextColor(140, 159, 168);
-  const now = new Date();
-  pdf.text(
-    `Gerado em ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · Laghetto Hotéis`,
-    PW/2, PH - 4, {align:'center'}
-  );
+  // Sem rodapé
 }
 
 function tableToCanvas(el, W, H){
@@ -2582,15 +2649,41 @@ async function generatePDF(){
   // Layout: nIndics charts per page, side by side
   const chartW_mm = (PW - 2*MARGIN - (nIndics-1)*8) / nIndics;
   const chartH_mm = PH - MARGIN - 44; // leave room for header
-  const PX_PER_MM = 4; // resolution
+  const PX_PER_MM = 12; // alta resolução (≈288dpi)
   const chartW_px = Math.round(chartW_mm * PX_PER_MM);
   const chartH_px = Math.round(chartH_mm * PX_PER_MM);
 
-  for(let pi=0; pi<opts.pracas.length; pi++){
-    const praca = opts.pracas[pi];
+  // Build pages list based on grupo mode
+  let pdfPages = [];
+  if(opts.grupo === 'praca'){
+    pdfPages = opts.pracas.map(p=>({label: p, type:'praca', key: p}));
+  } else if(opts.grupo === 'regional'){
+    const regMap = {R1:'Regional 1', R2:'Regional 2', R3:'Regional 3'};
+    pdfPages = opts.regionais.map(r=>({label: regMap[r]||r, type:'regional', key: r}));
+  } else {
+    // Por hotel
+    const sel = opts.hoteisGrf.length > 0 ? opts.hoteisGrf : DB.hotels.map(h=>h.nome);
+    pdfPages = sel.map(nome=>({label: nome, type:'hotel', key: nome}));
+  }
+
+  if(!pdfPages.length){ alert('Selecione ao menos uma opção.'); btn.disabled=false; btn.textContent='📄 Gerar PDF'; return; }
+
+  for(let pi=0; pi<pdfPages.length; pi++){
+    const page = pdfPages[pi];
     if(pi > 0) pdf.addPage();
 
-    const data = calcPracaData(praca, opts.meses, opts.hoteisSel);
+    // Calc data based on type
+    let data;
+    if(page.type === 'praca'){
+      data = calcPracaData(page.key, opts.meses, opts.hoteisSel);
+    } else if(page.type === 'regional'){
+      // Sum all hotels in regional
+      const regHoteis = DB.hotels.filter(h=>h.regional===page.key).map(h=>h.nome);
+      data = calcPracaDataByHoteis(regHoteis, opts.meses);
+    } else {
+      data = calcPracaDataByHoteis([page.key], opts.meses);
+    }
+    const praca = page.label;
 
     // ── HEADER via pdfHeader ──
     pdfHeader(pdf, `Indicadores ${praca}`, periodoFull, PW, PH, MARGIN);
@@ -2648,7 +2741,7 @@ async function generatePDF(){
     );
 
     // Progress
-    const pct = Math.round((pi+1)/opts.pracas.length*100);
+    const pct = Math.round((pi+1)/pdfPages.length*100);
     document.getElementById('pdfProgressBar').style.width = pct+'%';
     document.getElementById('pdfProgressTxt').textContent = `${praca} (${pi+1}/${opts.pracas.length})`;
     await new Promise(r=>setTimeout(r,20));
