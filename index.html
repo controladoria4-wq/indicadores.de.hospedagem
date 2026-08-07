@@ -2458,7 +2458,7 @@ async function generatePDF(){
     pdfPages = sel.map(nome=>({label: nome, type:'hotel', key: nome}));
   }
 
-  if(!pdfPages.length){ alert('Selecione ao menos uma opção.'); btn.disabled=false; btn.textContent='📄 Gerar PDF'; return; }
+  if(conteudo.includes('graficos') && !pdfPages.length){ alert('Selecione ao menos uma opção.'); btn.disabled=false; btn.textContent='📄 Gerar PDF'; return; }
 
   for(let pi=0; pi<pdfPages.length; pi++){
     const page = pdfPages[pi];
@@ -2521,7 +2521,7 @@ async function generatePDF(){
     await new Promise(r=>setTimeout(r,20));
   }
 
-  } // end graficos
+  } // end graficos loop
 
   // ── ANALÍTICO ──
   if(conteudo.includes('analitico')){
@@ -2846,9 +2846,8 @@ function downloadTable(){
     alert('Erro ao gerar imagem. Tente novamente.');
   });
 }
-</script>
-</body>
-</html>async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
+
+async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
   if(!window.html2canvas) return;
 
@@ -2945,5 +2944,6 @@ async function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   }
   resMeses=origMeses; renderResultado();
 }
-
-
+</script>
+</body>
+</html>
