@@ -2889,7 +2889,7 @@ async function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
 
   // Apply period filter to comparativo
   const origMeses = new Set(compMeses);
-  compMeses = new Set(opts.meses);
+  compMeses.clear(); opts.meses.forEach(m=>compMeses.add(m));
   renderComparativo();
   await new Promise(r=>setTimeout(r,300));
 
@@ -2923,7 +2923,7 @@ async function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
 
   // Apply period filter to resultado
   const origMeses = new Set(resMeses);
-  resMeses = new Set(opts.meses);
+  resMeses.clear(); opts.meses.forEach(m=>resMeses.add(m));
   renderResultado();
   await new Promise(r=>setTimeout(r,300));
 
