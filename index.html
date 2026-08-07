@@ -2524,30 +2524,28 @@ async function generatePDF(){
   } // end graficos loop
 
   // ── ANALÍTICO ──
+  let firstPage = true;
   if(conteudo.includes('analitico')){
-    const isFirst = !conteudo.includes('graficos');
-    if(!isFirst) pdf.addPage();
-    await addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape);
-    document.getElementById('pdfProgressTxt').textContent = 'Analítico gerado...';
-    await new Promise(r=>setTimeout(r,30));
+    document.getElementById('pdfProgressTxt').textContent = 'Gerando Analítico...';
+    if(!firstPage) pdf.addPage(); firstPage=false;
+    try{ await addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull); }
+    catch(e){ console.error('Analítico error:', e); }
   }
 
   // ── COMPARATIVO ──
   if(conteudo.includes('comparativo')){
-    const isFirst = !conteudo.includes('graficos') && !conteudo.includes('analitico');
-    if(!isFirst) pdf.addPage();
-    await addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape);
-    document.getElementById('pdfProgressTxt').textContent = 'Comparativo gerado...';
-    await new Promise(r=>setTimeout(r,30));
+    document.getElementById('pdfProgressTxt').textContent = 'Gerando Comparativo...';
+    if(!firstPage) pdf.addPage(); firstPage=false;
+    try{ await addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull); }
+    catch(e){ console.error('Comparativo error:', e); }
   }
 
   // ── RESULTADO ──
   if(conteudo.includes('resultado')){
-    const isFirst = !conteudo.includes('graficos') && !conteudo.includes('analitico') && !conteudo.includes('comparativo');
-    if(!isFirst) pdf.addPage();
-    await addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape);
-    document.getElementById('pdfProgressTxt').textContent = 'Resultado gerado...';
-    await new Promise(r=>setTimeout(r,30));
+    document.getElementById('pdfProgressTxt').textContent = 'Gerando Resultado...';
+    if(!firstPage) pdf.addPage(); firstPage=false;
+    try{ await addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull); }
+    catch(e){ console.error('Resultado error:', e); }
   }
 
   // Restore active view
@@ -2556,7 +2554,12 @@ async function generatePDF(){
   const activeView = document.getElementById('view-'+activeTab);
   if(activeView) activeView.classList.add('active');
 
-  pdf.save(`Laghetto_Indicadores_${periodoFull.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+  try {
+    pdf.save(`Laghetto_Indicadores_${periodoFull.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+  } catch(saveErr) {
+    console.error('PDF save error:', saveErr);
+    alert('Erro ao salvar PDF: ' + saveErr.message);
+  }
 
   btn.disabled = false; btn.textContent = '📄 Gerar PDF';
   document.getElementById('pdfProgress').style.display = 'none';
