@@ -2503,50 +2503,99 @@ function tableToCanvas(el, W, H){
   });
 }
 
-async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
-  pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
-  const el = document.getElementById('tableWrap');
-  if(!el) return;
-  const canvas = await tableToCanvas(el, PW, PH);
-  if(!canvas) return;
-  const imgW = PW - 2*MARGIN;
-  const imgH = Math.min(PH - 30, (canvas.height / canvas.width) * imgW);
-  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, 26, imgW, imgH);
+async 
+function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+  return new Promise(async resolve=>{
+    pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
+    // Switch to tabela tab temporarily
+    const prevClass = document.body.className;
+    document.body.className = 'tab-tabela';
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-tabela').classList.add('active');
+    await new Promise(r=>setTimeout(r,100));
+
+    const el = document.getElementById('tableWrap');
+    if(!el){ document.body.className=prevClass; resolve(); return; }
+    if(!window.html2canvas){ document.body.className=prevClass; resolve(); return; }
+
+    html2canvas(el,{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,
+      width:el.scrollWidth,windowWidth:el.scrollWidth+100})
+    .then(canvas=>{
+      const imgW=PW-2*MARGIN;
+      const imgH=Math.min(PH-30,(canvas.height/canvas.width)*imgW);
+      pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,26,imgW,imgH);
+      document.body.className=prevClass;
+      resolve();
+    }).catch(()=>{ document.body.className=prevClass; resolve(); });
+  });
 }
 
-async function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
-  pdfHeader(pdf, 'Comparativo', periodoFull, PW, PH, MARGIN);
-  const el = document.getElementById('compContent');
-  if(!el||!el.innerHTML.trim()) return;
-  const tables = el.querySelectorAll('.comp-table-wrap');
-  let y = 26;
-  for(const t of tables){
-    const canvas = await tableToCanvas(t, PW, PH);
-    if(!canvas) continue;
-    const imgW = PW - 2*MARGIN;
-    const imgH = Math.min(PH - y - 10, (canvas.height / canvas.width) * imgW);
-    if(y + imgH > PH - 10){ pdf.addPage(); pdfHeader(pdf,'Comparativo',periodoFull,PW,PH,MARGIN); y=26; }
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, y, imgW, imgH);
-    y += imgH + 6;
-  }
+function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+  return new Promise(async resolve=>{
+    pdfHeader(pdf, 'Comparativo', periodoFull, PW, PH, MARGIN);
+    const prevClass = document.body.className;
+    document.body.className = 'tab-comparativo';
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-comparativo').classList.add('active');
+    renderComparativo();
+    await new Promise(r=>setTimeout(r,200));
+
+    const el = document.getElementById('compContent');
+    if(!el||!el.innerHTML.trim()){ document.body.className=prevClass; resolve(); return; }
+    if(!window.html2canvas){ document.body.className=prevClass; resolve(); return; }
+
+    const tables = el.querySelectorAll('.comp-table-wrap');
+    let y = 26;
+    const captureNext = (idx)=>{
+      if(idx>=tables.length){ document.body.className=prevClass; resolve(); return; }
+      html2canvas(tables[idx],{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,
+        width:tables[idx].scrollWidth,windowWidth:tables[idx].scrollWidth+100})
+      .then(canvas=>{
+        const imgW=PW-2*MARGIN;
+        const imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
+        if(y+imgH>PH-10){ pdf.addPage(); pdfHeader(pdf,'Comparativo',periodoFull,PW,PH,MARGIN); y=26; }
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
+        y+=imgH+6;
+        captureNext(idx+1);
+      }).catch(()=>captureNext(idx+1));
+    };
+    captureNext(0);
+  });
 }
 
-async function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
-  pdfHeader(pdf, 'Resultado', periodoFull, PW, PH, MARGIN);
-  const el = document.getElementById('resContent');
-  if(!el||!el.innerHTML.trim()) return;
-  const tables = el.querySelectorAll('.res-table-wrap');
-  let y = 26;
-  for(const t of tables){
-    const canvas = await tableToCanvas(t, PW, PH);
-    if(!canvas) continue;
-    const imgW = PW - 2*MARGIN;
-    const imgH = Math.min(PH - y - 10, (canvas.height / canvas.width) * imgW);
-    if(y + imgH > PH - 10){ pdf.addPage(); pdfHeader(pdf,'Resultado',periodoFull,PW,PH,MARGIN); y=26; }
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, y, imgW, imgH);
-    y += imgH + 6;
-  }
+function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull, isLandscape){
+  return new Promise(async resolve=>{
+    pdfHeader(pdf, 'Resultado', periodoFull, PW, PH, MARGIN);
+    const prevClass = document.body.className;
+    document.body.className = 'tab-resultado';
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-resultado').classList.add('active');
+    renderResultado();
+    await new Promise(r=>setTimeout(r,200));
+
+    const el = document.getElementById('resContent');
+    if(!el||!el.innerHTML.trim()){ document.body.className=prevClass; resolve(); return; }
+    if(!window.html2canvas){ document.body.className=prevClass; resolve(); return; }
+
+    const tables = el.querySelectorAll('.res-table-wrap');
+    let y = 26;
+    const captureNext = (idx)=>{
+      if(idx>=tables.length){ document.body.className=prevClass; resolve(); return; }
+      html2canvas(tables[idx],{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,
+        width:tables[idx].scrollWidth,windowWidth:tables[idx].scrollWidth+100})
+      .then(canvas=>{
+        const imgW=PW-2*MARGIN;
+        const imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
+        if(y+imgH>PH-10){ pdf.addPage(); pdfHeader(pdf,'Resultado',periodoFull,PW,PH,MARGIN); y=26; }
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
+        y+=imgH+6;
+        captureNext(idx+1);
+      }).catch(()=>captureNext(idx+1));
+    };
+    captureNext(0);
+  });
 }
+
 
 async function generatePDF(){
   const conteudo = [...document.querySelectorAll('#pdfConteudo input:checked')].map(i=>i.value);
