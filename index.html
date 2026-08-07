@@ -2646,17 +2646,11 @@ async function generatePDF(){
       pdf.roundedRect(cx, cy, chartW_mm, chartH_mm + 12, 3, 3, 'FD');
 
       // Indicator label + unit badge
-      // Label at cy+8, badge pill centered on same cap-height
+      // "R$ DIÁRIA MÉDIA" or "% OCUPAÇÃO" — symbol bold before label, no badge
       const LABEL_FS = 10;
+      const fullLabel = def.icon + ' ' + def.label;
       pdf.setFont('helvetica','bold'); pdf.setFontSize(LABEL_FS); pdf.setTextColor(2,42,34);
-      pdf.text(def.label, cx + 5, cy + 8);
-      const _lw = pdf.getStringUnitWidth(def.label) * LABEL_FS / pdf.internal.scaleFactor;
-      // Badge: top = cy+4, height = 4mm (cap-height of 10pt ≈ 3.5mm)
-      pdf.setFillColor(42,96,106);
-      pdf.roundedRect(cx+5+_lw+2, cy+4, 9, 4, 1.2, 1.2, 'F');
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5); pdf.setTextColor(255,255,255);
-      pdf.text(def.icon, cx+5+_lw+6.5, cy+7, {align:'center'});
-      pdf.setTextColor(2,42,34);
+      pdf.text(fullLabel, cx + 5, cy + 8);
 
       // Chart image
       pdf.addImage(imgData, 'PNG', cx + 2, cy + 10, chartW_mm - 4, chartH_mm);
