@@ -2480,11 +2480,21 @@ function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
   const BAR_H = 20;
   pdf.setFillColor(2, 42, 34);
   pdf.rect(0, 0, PW, BAR_H, 'F');
-  try { pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, 6, 8, 8); } catch(e) {}
+
+  // jsPDF: text y = baseline. For 12pt bold helvetica:
+  // baseline at 13mm, cap-top ~8.8mm, visual center = 10.9mm
+  // Symbol center = 10.9mm => symY = 10.9 - 5 = 5.9mm
+  // Text baseline=13mm, cap-top≈9.5mm → visual center=11.25mm
+  // Logo 9×9mm → symY = 11.25 - 4.5 = 6.75mm
+  const SYM = 9;
+  try { pdf.addImage(LAGHETTO_SYMBOL_B64, 'PNG', MARGIN, 6.75, SYM, SYM); } catch(e) {}
+
   pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(255,255,255);
-  pdf.text(titulo.toUpperCase(), MARGIN + 11, 12.5);
+  pdf.text(titulo.toUpperCase(), MARGIN + SYM + 3, 13);
+
   pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
-  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 12.5, {align:'right'});
+  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 13, {align:'right'});
+
   pdf.setDrawColor(42, 96, 106); pdf.setLineWidth(0.4);
   pdf.line(0, BAR_H, PW, BAR_H);
 }
@@ -2640,13 +2650,15 @@ async function generatePDF(){
       pdf.roundedRect(cx, cy, chartW_mm, chartH_mm + 12, 3, 3, 'FD');
 
       // Indicator label + unit badge
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(2,42,34);
-      pdf.text(def.label, cx + 5, cy + 7);
-      const _lw = pdf.getStringUnitWidth(def.label) * 9 / pdf.internal.scaleFactor;
+      const LABEL_FS = 11;
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(LABEL_FS); pdf.setTextColor(2,42,34);
+      pdf.text(def.label, cx + 5, cy + 8);
+      const _lw = pdf.getStringUnitWidth(def.label) * LABEL_FS / pdf.internal.scaleFactor;
+      const _bH = 5, _bW = 10;
       pdf.setFillColor(42,96,106);
-      pdf.roundedRect(cx+5+_lw+2, cy+3.5, 9, 4, 1.2, 1.2, 'F');
-      pdf.setFont('helvetica','bold'); pdf.setFontSize(6.5); pdf.setTextColor(255,255,255);
-      pdf.text(def.icon, cx+5+_lw+6.5, cy+6.3, {align:'center'});
+      pdf.roundedRect(cx+5+_lw+2, cy+3, _bW, _bH, 1.5, 1.5, 'F');
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(7); pdf.setTextColor(255,255,255);
+      pdf.text(def.icon, cx+5+_lw+2+_bW/2, cy+6.8, {align:'center'});
       pdf.setTextColor(2,42,34);
 
       // Chart image
