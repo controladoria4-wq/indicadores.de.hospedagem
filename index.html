@@ -2899,29 +2899,27 @@ const LAGHETTO_SYMBOL_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAA
 
 
 // ── EXPORTAÇÃO EM PDF (por aba) ──
-// Gera um PDF de página única a partir de um canvas já capturado (html2canvas),
-// com a página do PDF no mesmo tamanho/proporção da imagem — sem cortes ou distorção.
-// Gira fisicamente o canvas 90° (sem depender da rotação do jsPDF, que tem
-// âncora confusa) — assim a página do PDF sempre fica sem cortes/distorções.
-function rotacionarCanvas90(canvas){
-  const rot = document.createElement('canvas');
-  rot.width = canvas.height; rot.height = canvas.width;
-  const ctx = rot.getContext('2d');
-  ctx.translate(rot.width, 0);
-  ctx.rotate(Math.PI/2);
-  ctx.drawImage(canvas, 0, 0);
-  return rot;
-}
-
-// orientation: 'landscape' | 'portrait' | undefined (undefined = usa a orientação
-// natural do conteúdo, sem girar nada).
+// Encaixa o canvas capturado (html2canvas) numa página A4 no tamanho escolhido
+// (retrato ou paisagem), reduzindo a escala se necessário para caber inteiro,
+// sem girar o conteúdo — assim o texto nunca sai de lado.
+// orientation: 'landscape' | 'portrait' | undefined (undefined = usa a
+// orientação mais próxima do formato natural do conteúdo).
 function salvarCanvasComoPDF(canvas, filename, orientation){
   const {jsPDF} = window.jspdf;
   const natural = canvas.width >= canvas.height ? 'landscape' : 'portrait';
-  const finalCanvas = (orientation && orientation !== natural) ? rotacionarCanvas90(canvas) : canvas;
-  const pageOrientation = finalCanvas.width >= finalCanvas.height ? 'landscape' : 'portrait';
-  const pdf = new jsPDF({orientation: pageOrientation, unit:'px', format:[finalCanvas.width, finalCanvas.height]});
-  pdf.addImage(finalCanvas.toDataURL('image/png'), 'PNG', 0, 0, finalCanvas.width, finalCanvas.height);
+  const pageOrientation = orientation || natural;
+  const pdf = new jsPDF({orientation: pageOrientation, unit:'mm', format:'a4'});
+  const pageW = pdf.internal.pageSize.getWidth();
+  const pageH = pdf.internal.pageSize.getHeight();
+  const margin = 8; // mm
+  const maxW = pageW - margin*2;
+  const maxH = pageH - margin*2;
+  const ratio = canvas.width / canvas.height;
+  let drawW = maxW, drawH = maxW / ratio;
+  if(drawH > maxH){ drawH = maxH; drawW = maxH * ratio; }
+  const x = (pageW - drawW) / 2;
+  const y = (pageH - drawH) / 2;
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, y, drawW, drawH);
   pdf.save(filename);
 }
 
