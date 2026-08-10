@@ -2665,6 +2665,43 @@ function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
     ctx.fillText(label, lx + legGap, ly);
     lx += legGap + ctx.measureText(label).width + legSpacing;
   });
+
+  // Badge de variação (Orçado × Realizado 2026) — mesma lógica/cores usadas
+  // no restante do app: ▲ verde quando realizado > orçado, ▼ vermelho quando menor.
+  if(vals.orc != null && vals.r26 != null){
+    const o = vals.orc, r = vals.r26;
+    let varTxt, isPos;
+    if(o === 0){ varTxt = (r>0?'▲':'▼'); isPos = r > 0; }
+    else{ const p = (r-o)/Math.abs(o)*100; varTxt = (p>=0?'▲':'▼') + Math.abs(p).toFixed(1)+'%'; isPos = p >= 0; }
+
+    const badgeFSize = Math.max(W * 0.032, 12);
+    ctx.font = `bold ${badgeFSize}px Inter, Arial, sans-serif`;
+    const textW = ctx.measureText(varTxt).width;
+    const padX = badgeFSize * 0.55, padY = badgeFSize * 0.45;
+    const badgeW = textW + padX*2, badgeH = badgeFSize + padY*1.6;
+    const bx = W - pad.r - badgeW, by = H * 0.03;
+
+    ctx.fillStyle = isPos ? 'rgba(26,107,80,0.12)' : 'rgba(176,48,48,0.12)';
+    const rad = badgeH/2;
+    ctx.beginPath();
+    ctx.moveTo(bx+rad, by);
+    ctx.lineTo(bx+badgeW-rad, by);
+    ctx.arcTo(bx+badgeW, by, bx+badgeW, by+rad, rad);
+    ctx.lineTo(bx+badgeW, by+badgeH-rad);
+    ctx.arcTo(bx+badgeW, by+badgeH, bx+badgeW-rad, by+badgeH, rad);
+    ctx.lineTo(bx+rad, by+badgeH);
+    ctx.arcTo(bx, by+badgeH, bx, by+badgeH-rad, rad);
+    ctx.lineTo(bx, by+rad);
+    ctx.arcTo(bx, by, bx+rad, by, rad);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = isPos ? '#1a6b50' : '#b03030';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(varTxt, bx + badgeW/2, by + badgeH/2 + badgeFSize*0.04);
+    ctx.textBaseline = 'alphabetic';
+  }
 }
 
 
