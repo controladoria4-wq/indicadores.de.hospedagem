@@ -2387,8 +2387,16 @@ function getPdfOptions(){
   const regionais = grupo==='regional' ? grupoSel : ['R1','R2','R3'];
   const hoteisGrf = grupo==='hotel'    ? grupoSel : [];
 
-  const indicadores = [...document.querySelectorAll('#pdfSecGraficos [data-val]')].filter(b=>b.classList.contains('selected')&&['occ','dm','rev','rec'].includes(b.dataset.val)).map(b=>b.dataset.val);
-  const series      = [...document.querySelectorAll('#pdfSecGraficos [data-val]')].filter(b=>b.classList.contains('selected')&&['orc','r26','r25'].includes(b.dataset.val)).map(b=>b.dataset.val);
+  // Read indicadores/series regardless of visibility
+  const indicadores = [...document.querySelectorAll('#pdfSecGraficos button[data-val]')]
+    .filter(b=>b.classList.contains('selected') && ['occ','dm','rev','rec'].includes(b.dataset.val))
+    .map(b=>b.dataset.val);
+  const series = [...document.querySelectorAll('#pdfSecGraficos button[data-val]')]
+    .filter(b=>b.classList.contains('selected') && ['orc','r26','r25'].includes(b.dataset.val))
+    .map(b=>b.dataset.val);
+  // Defaults if none selected
+  const indicadoresFinal = indicadores.length ? indicadores : ['occ','dm'];
+  const seriesFinal = series.length ? series : ['orc','r26'];
 
   const orientBtn = document.querySelector('.pdf-orient-btn.selected');
   const orientation = orientBtn ? orientBtn.dataset.val : 'landscape';
@@ -2396,7 +2404,7 @@ function getPdfOptions(){
   const anoAntBtn = document.querySelector('[onclick="togglePdfAnoAnt(this)"].selected');
   const anoAnt = anoAntBtn && anoAntBtn.dataset.val !== 'none' ? anoAntBtn.dataset.val : null;
 
-  return {conteudo, meses, periodo, grupo, grupoSel, pracas, regionais, hoteisGrf, indicadores, series, orientation, anoAnt, mesInicio:mesSelect, mesFim:mesSelect};
+  return {conteudo, meses, periodo, grupo, grupoSel, pracas, regionais, hoteisGrf, indicadores:indicadoresFinal, series:seriesFinal, orientation, anoAnt, mesInicio:mesSelect, mesFim:mesSelect};
 }
 
 
@@ -2854,37 +2862,47 @@ function downloadTable(){
 
 async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
-  if(!window.html2canvas) return;
+  if(!window.html2canvas){ console.error('html2canvas not loaded'); return; }
 
-  // Save state, apply PDF period
   const origMes = S.mes;
   S.mes = opts.meses[opts.meses.length-1];
 
-  // Make view visible and render
-  document.querySelectorAll('.view').forEach(v=>{ v.style.display=''; v.classList.remove('active'); });
+  // Force the view to be rendered and visible
+  const allViews = document.querySelectorAll('.view');
+  allViews.forEach(v=>{ v.style.display='none'; });
   const tabEl = document.getElementById('view-tabela');
-  tabEl.classList.add('active');
   tabEl.style.display = 'block';
+  tabEl.style.visibility = 'visible';
+  tabEl.style.position = 'relative';
   render();
-  await new Promise(r=>setTimeout(r,500));
+  await new Promise(r=>setTimeout(r,800));
 
   const el = document.getElementById('tableWrap');
-  if(!el || !el.offsetHeight){ S.mes=origMes; return; }
+  console.log('tableWrap:', el, 'offsetHeight:', el?.offsetHeight, 'scrollHeight:', el?.scrollHeight);
+  if(!el){ console.error('tableWrap not found'); S.mes=origMes; allViews.forEach(v=>v.style.display=''); return; }
 
   try{
-    const canvas = await html2canvas(el,{
-      backgroundColor:'#fff', scale:2, useCORS:true, logging:false,
-      width:Math.max(el.scrollWidth,800),
-      windowWidth:Math.max(el.scrollWidth,800)+100
+    const canvas = await html2canvas(el, {
+      backgroundColor:'#ffffff',
+      scale:2,
+      useCORS:true,
+      logging:false,
+      allowTaint:true,
+      width: el.scrollWidth || 800,
+      height: el.scrollHeight || 400,
+      windowWidth: (el.scrollWidth || 800) + 200,
+      windowHeight: (el.scrollHeight || 400) + 200,
     });
-    if(canvas.width > 0 && canvas.height > 0){
+    console.log('Canvas:', canvas.width, 'x', canvas.height);
+    if(canvas.width > 10 && canvas.height > 10){
       const imgW = PW - 2*MARGIN;
-      const imgH = Math.min(PH-32, (canvas.height/canvas.width)*imgW);
+      const imgH = Math.min(PH - 32, (canvas.height / canvas.width) * imgW);
       pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, 26, imgW, imgH);
     }
-  } catch(e){ console.error('addAnaliticoPDF:', e); }
+  } catch(e){ console.error('html2canvas error:', e); }
 
   S.mes = origMes;
+  allViews.forEach(v=>{ v.style.display=''; });
   render();
 }
 
