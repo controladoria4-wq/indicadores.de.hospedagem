@@ -456,7 +456,8 @@ body.tab-comparativo .main{padding-top:16px}
   <!-- TABELA -->
   <div class="view" id="view-tabela">
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-  <button class="btn-download-table" onclick="downloadTable()">📷 Salvar como imagem</button>
+  <button class="btn-download-table" onclick="downloadTable()">📷 Imagem</button>
+  <button class="btn-download-table" onclick="downloadTabPDF('tabela','Analítico de Indicadores')">📄 PDF</button>
 </div>
 <div class="twrap" id="tableWrap">
       <table>
@@ -526,7 +527,8 @@ body.tab-comparativo .main{padding-top:16px}
           <div class="mdrop" id="resMesDrop"></div>
         </div>
       </div>
-      <button class="res-download-btn" onclick="downloadResultado()">📷 Salvar como imagem</button>
+      <button class="res-download-btn" onclick="downloadResultado()">📷 Imagem</button>
+      <button class="res-download-btn" onclick="downloadTabPDF('resultado','Resultado')">📄 PDF</button>
       <div style="clear:both"></div>
       <div id="resContent"></div>
     </div>
@@ -562,7 +564,8 @@ body.tab-comparativo .main{padding-top:16px}
         </div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-        <button class="btn-download-table" onclick="downloadComparativo()">📷 Salvar como imagem</button>
+        <button class="btn-download-table" onclick="downloadComparativo()">📷 Imagem</button>
+        <button class="btn-download-table" onclick="downloadTabPDF('comparativo','Comparativo')">📄 PDF</button>
       </div>
       <div id="compContent"></div>
     </div>
@@ -2860,119 +2863,278 @@ function downloadTable(){
   });
 }
 
+
+
+
+
+
+
+// ── PDF HEADER ──
+function pdfHeader(pdf, titulo, periodoFull, PW, PH, MARGIN){
+  const BAR_H = 20;
+  pdf.setFillColor(2, 42, 34);
+  pdf.rect(0, 0, PW, BAR_H, 'F');
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(12); pdf.setTextColor(255,255,255);
+  pdf.text(titulo.toUpperCase(), MARGIN, 13);
+  pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
+  pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 13, {align:'right'});
+  pdf.setDrawColor(42, 96, 106); pdf.setLineWidth(0.4);
+  pdf.line(0, BAR_H, PW, BAR_H);
+  // Footer
+  pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(160,170,168);
+  pdf.text('LAGHETTO HOTÉIS', PW/2, PH - 5, {align:'center'});
+}
+
+// ── CALC PRACA DATA ──
+function calcPracaDataByHoteis(hoteisNomes, meses){
+  let disp_orc=0, disp_r26=0, disp_r25=0;
+  let rns_orc=0, rns_r26=0, rns_r25=0;
+  let rec_orc=0, rec_r26=0, rec_r25=0;
+  hoteisNomes.forEach(nome=>{
+    const h = DB.hotels.find(x=>x.nome===nome); if(!h) return;
+    meses.forEach(m=>{
+      const sm=String(m), dias=parseInt(DB.dias_mes[sm]);
+      const pm26=h.pool_mensal_2026||{}, pm25=h.pool_mensal_2025||{};
+      const p26=pm26[sm]||h.pool||0, p25=pm25[sm]||h.pool||0;
+      disp_orc+=p26*dias; disp_r26+=p26*dias; disp_r25+=p25*dias;
+      rns_orc+=(DB.dia_orc26[nome]&&DB.dia_orc26[nome][sm])||0;
+      rns_r26+=(DB.dia_r26[nome]&&DB.dia_r26[nome][sm])||0;
+      rns_r25+=(DB.dia_r25[nome]&&DB.dia_r25[nome][sm])||0;
+      rec_orc+=(DB.rec_orc26[nome]&&DB.rec_orc26[nome][sm])||0;
+      rec_r26+=(DB.rec_r26[nome]&&DB.rec_r26[nome][sm])||0;
+      rec_r25+=(DB.rec_r25[nome]&&DB.rec_r25[nome][sm])||0;
+    });
+  });
+  const occ_orc=disp_orc>0?rns_orc/disp_orc:0, occ_r26=disp_r26>0?rns_r26/disp_r26:0, occ_r25=disp_r25>0?rns_r25/disp_r25:0;
+  const dm_orc=rns_orc>0?rec_orc/rns_orc:0, dm_r26=rns_r26>0?rec_r26/rns_r26:0, dm_r25=rns_r25>0?rec_r25/rns_r25:0;
+  return {
+    occ:{orc:occ_orc, r26:occ_r26, r25:occ_r25},
+    dm: {orc:dm_orc,  r26:dm_r26,  r25:dm_r25},
+    rev:{orc:dm_orc*occ_orc, r26:dm_r26*occ_r26, r25:dm_r25*occ_r25},
+    rec:{orc:rec_orc, r26:rec_r26, r25:rec_r25},
+  };
+}
+
+// ── DRAW PDF BAR CHART ──
+function drawPdfBarChart(canvas, vals, series, fmtFn, W, H){
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
+  const colors={orc:'#2a606a',r26:'#b4d4df',r25:'#c8c0b8'};
+  const labels={orc:'Orçado',r26:'Realizado',r25:'Real. 2025'};
+  const BASE=Math.round(W*0.032), LEGEND_PX=BASE, VALUE_PX=Math.round(BASE*1.15);
+  const PL=W*0.07,PR=W*0.07,PT=H*0.24,PB=H*0.10;
+  const cW=W-PL-PR,cH=H-PT-PB;
+  const n=series.length,tw=cW*0.48,gap=n>1?tw*0.18:0,bW=(tw-(n-1)*gap)/n;
+  const sx=PL+(cW-tw)/2,maxV=Math.max(...series.map(s=>vals[s]||0))*1.28||1;
+  series.forEach((s,i)=>{
+    const v=vals[s]||0,bH=Math.max(4,(v/maxV)*cH),bX=sx+i*(bW+gap),bY=PT+cH-bH,r=Math.min(bW*0.08,10);
+    ctx.fillStyle=colors[s];
+    ctx.beginPath();ctx.moveTo(bX+r,bY);ctx.lineTo(bX+bW-r,bY);
+    ctx.arcTo(bX+bW,bY,bX+bW,bY+r,r);ctx.lineTo(bX+bW,bY+bH);
+    ctx.lineTo(bX,bY+bH);ctx.arcTo(bX,bY,bX+r,bY,r);ctx.closePath();ctx.fill();
+    ctx.font=`bold ${VALUE_PX}px Inter,Arial,sans-serif`;
+    ctx.fillStyle='#022a22';ctx.textAlign='center';
+    ctx.fillText(fmtFn(v),bX+bW/2,bY-VALUE_PX*0.35);
+  });
+  ctx.strokeStyle='rgba(10,45,35,0.15)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(PL,PT+cH);ctx.lineTo(PL+cW,PT+cH);ctx.stroke();
+  ctx.font=`${LEGEND_PX}px Inter,Arial,sans-serif`;
+  const dotR=LEGEND_PX*0.38,dotGap=dotR*2.5+8,iGap=LEGEND_PX*1.2;
+  const totW=series.reduce((s2,s)=>s2+dotGap+ctx.measureText(labels[s]).width+iGap,0)-iGap;
+  let lx=(W-totW)/2,ly=PT*0.5;
+  series.forEach(s=>{
+    ctx.fillStyle=colors[s];ctx.beginPath();ctx.arc(lx+dotR,ly+LEGEND_PX*0.1,dotR,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4a6a6e';ctx.textAlign='left';
+    ctx.fillText(labels[s],lx+dotGap,ly+LEGEND_PX*0.38);
+    lx+=dotGap+ctx.measureText(labels[s]).width+iGap;
+  });
+}
+
+// ── ADD ANALÍTICO PDF ──
 async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
-  if(!window.html2canvas){ console.error('html2canvas not loaded'); return; }
-
+  if(!window.html2canvas) return;
   const origMes = S.mes;
   S.mes = opts.meses[opts.meses.length-1];
-
-  // Force the view to be rendered and visible
   const allViews = document.querySelectorAll('.view');
   allViews.forEach(v=>{ v.style.display='none'; });
   const tabEl = document.getElementById('view-tabela');
-  tabEl.style.display = 'block';
-  tabEl.style.visibility = 'visible';
-  tabEl.style.position = 'relative';
+  tabEl.style.display='block'; tabEl.style.position='relative';
   render();
-  await new Promise(r=>setTimeout(r,800));
-
+  await new Promise(r=>setTimeout(r,600));
   const el = document.getElementById('tableWrap');
-  console.log('tableWrap:', el, 'offsetHeight:', el?.offsetHeight, 'scrollHeight:', el?.scrollHeight);
-  if(!el){ console.error('tableWrap not found'); S.mes=origMes; allViews.forEach(v=>v.style.display=''); return; }
-
-  try{
-    const canvas = await html2canvas(el, {
-      backgroundColor:'#ffffff',
-      scale:2,
-      useCORS:true,
-      logging:false,
-      allowTaint:true,
-      width: el.scrollWidth || 800,
-      height: el.scrollHeight || 400,
-      windowWidth: (el.scrollWidth || 800) + 200,
-      windowHeight: (el.scrollHeight || 400) + 200,
-    });
-    console.log('Canvas:', canvas.width, 'x', canvas.height);
-    if(canvas.width > 10 && canvas.height > 10){
-      const imgW = PW - 2*MARGIN;
-      const imgH = Math.min(PH - 32, (canvas.height / canvas.width) * imgW);
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, 26, imgW, imgH);
-    }
-  } catch(e){ console.error('html2canvas error:', e); }
-
-  S.mes = origMes;
+  if(el && (el.scrollHeight||0) > 10){
+    try{
+      const canvas = await html2canvas(el,{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,allowTaint:true,width:el.scrollWidth||800,height:el.scrollHeight||400,windowWidth:(el.scrollWidth||800)+200});
+      if(canvas.width>10&&canvas.height>10){
+        const imgW=PW-2*MARGIN, imgH=Math.min(PH-32,(canvas.height/canvas.width)*imgW);
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,26,imgW,imgH);
+      }
+    } catch(e){ console.error('addAnaliticoPDF:', e); }
+  }
+  S.mes=origMes;
   allViews.forEach(v=>{ v.style.display=''; });
   render();
 }
 
+// ── ADD COMPARATIVO PDF ──
 async function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   pdfHeader(pdf, 'Comparativo', periodoFull, PW, PH, MARGIN);
   if(!window.html2canvas) return;
-
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-comparativo').classList.add('active');
-
-  // Apply period filter to comparativo
   const origMeses = new Set(compMeses);
   compMeses.clear(); opts.meses.forEach(m=>compMeses.add(m));
+  const allViews = document.querySelectorAll('.view');
+  allViews.forEach(v=>{ v.style.display='none'; });
+  const el2 = document.getElementById('view-comparativo');
+  el2.style.display='block'; el2.style.position='relative';
   renderComparativo();
-  await new Promise(r=>setTimeout(r,300));
-
+  await new Promise(r=>setTimeout(r,600));
   const el = document.getElementById('compContent');
-  if(!el||!el.innerHTML.trim()){ compMeses=origMeses; return; }
-
-  const tables = el.querySelectorAll('.comp-table-wrap');
-  let y = 26;
-  for(const t of tables){
-    try{
-      const canvas = await html2canvas(t,{
-        backgroundColor:'#fff', scale:2, useCORS:true, logging:false,
-        width:t.scrollWidth, windowWidth:t.scrollWidth+100
-      });
-      const imgW=PW-2*MARGIN;
-      const imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
-      if(y+imgH>PH-10){ pdf.addPage(); pdfHeader(pdf,'Comparativo',periodoFull,PW,PH,MARGIN); y=26; }
-      pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
-      y+=imgH+6;
-    } catch(e){ console.error('table capture error:', e); }
+  if(el && el.innerHTML.trim()){
+    const tables = el.querySelectorAll('.comp-table-wrap');
+    let y=26;
+    for(const t of tables){
+      try{
+        const canvas=await html2canvas(t,{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,allowTaint:true,width:t.scrollWidth||800,windowWidth:(t.scrollWidth||800)+200});
+        const imgW=PW-2*MARGIN, imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
+        if(y+imgH>PH-10){pdf.addPage();pdfHeader(pdf,'Comparativo',periodoFull,PW,PH,MARGIN);y=26;}
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
+        y+=imgH+6;
+      }catch(e){console.error('comp table:',e);}
+    }
   }
-  compMeses=origMeses; renderComparativo();
+  compMeses.clear(); origMeses.forEach(m=>compMeses.add(m));
+  allViews.forEach(v=>{ v.style.display=''; });
+  renderComparativo();
 }
 
+// ── ADD RESULTADO PDF ──
 async function addResultadoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   pdfHeader(pdf, 'Resultado', periodoFull, PW, PH, MARGIN);
   if(!window.html2canvas) return;
-
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-resultado').classList.add('active');
-
-  // Apply period filter to resultado
   const origMeses = new Set(resMeses);
   resMeses.clear(); opts.meses.forEach(m=>resMeses.add(m));
+  const allViews = document.querySelectorAll('.view');
+  allViews.forEach(v=>{ v.style.display='none'; });
+  const el2 = document.getElementById('view-resultado');
+  el2.style.display='block'; el2.style.position='relative';
   renderResultado();
-  await new Promise(r=>setTimeout(r,300));
-
+  await new Promise(r=>setTimeout(r,600));
   const el = document.getElementById('resContent');
-  if(!el||!el.innerHTML.trim()){ resMeses=origMeses; return; }
-
-  const tables = el.querySelectorAll('.res-table-wrap');
-  let y = 26;
-  for(const t of tables){
-    try{
-      const canvas = await html2canvas(t,{
-        backgroundColor:'#fff', scale:2, useCORS:true, logging:false,
-        width:t.scrollWidth, windowWidth:t.scrollWidth+100
-      });
-      const imgW=PW-2*MARGIN;
-      const imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
-      if(y+imgH>PH-10){ pdf.addPage(); pdfHeader(pdf,'Resultado',periodoFull,PW,PH,MARGIN); y=26; }
-      pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
-      y+=imgH+6;
-    } catch(e){ console.error('table capture error:', e); }
+  if(el && el.innerHTML.trim()){
+    const tables = el.querySelectorAll('.res-table-wrap');
+    let y=26;
+    for(const t of tables){
+      try{
+        const canvas=await html2canvas(t,{backgroundColor:'#fff',scale:2,useCORS:true,logging:false,allowTaint:true,width:t.scrollWidth||800,windowWidth:(t.scrollWidth||800)+200});
+        const imgW=PW-2*MARGIN, imgH=Math.min(PH-y-10,(canvas.height/canvas.width)*imgW);
+        if(y+imgH>PH-10){pdf.addPage();pdfHeader(pdf,'Resultado',periodoFull,PW,PH,MARGIN);y=26;}
+        pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,y,imgW,imgH);
+        y+=imgH+6;
+      }catch(e){console.error('res table:',e);}
+    }
   }
-  resMeses=origMeses; renderResultado();
+  resMeses.clear(); origMeses.forEach(m=>resMeses.add(m));
+  allViews.forEach(v=>{ v.style.display=''; });
+  renderResultado();
 }
+
+
+// ── DOWNLOAD TAB AS PDF ──
+async function downloadTabPDF(tabId, titulo){
+  if(!window.html2canvas){ alert('html2canvas não carregado.'); return; }
+  const {jsPDF} = window.jspdf;
+  if(!jsPDF){ alert('jsPDF não carregado.'); return; }
+
+  const btn = event.target;
+  btn.textContent = '⏳ Gerando...';
+  btn.disabled = true;
+
+  // Get the content element
+  const elMap = {
+    tabela: 'tableWrap',
+    comparativo: 'compContent',
+    resultado: 'resContent',
+  };
+  const elId = elMap[tabId];
+  const el = document.getElementById(elId);
+  if(!el){ btn.textContent='📄 PDF'; btn.disabled=false; return; }
+
+  // Get current period label
+  const mes = S ? MESES_NMF[S.mes] || '' : '';
+  const periodoFull = mes ? `${mes} 2026` : '2026';
+
+  try {
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      width: el.scrollWidth,
+      height: el.scrollHeight,
+      windowWidth: el.scrollWidth + 200,
+    });
+
+    // Choose orientation based on content width
+    const isLandscape = canvas.width > canvas.height;
+    const pdf = new jsPDF({ orientation: isLandscape ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    const PW = isLandscape ? 297 : 210;
+    const PH = isLandscape ? 210 : 297;
+    const MARGIN = 12;
+
+    // Header
+    pdf.setFillColor(2, 42, 34);
+    pdf.rect(0, 0, PW, 18, 'F');
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(255,255,255);
+    pdf.text(titulo.toUpperCase(), MARGIN, 12);
+    pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
+    pdf.text(periodoFull.toUpperCase(), PW - MARGIN, 12, {align:'right'});
+    pdf.setDrawColor(42,96,106); pdf.setLineWidth(0.4);
+    pdf.line(0, 18, PW, 18);
+
+    // Content — may need multiple pages
+    const imgW = PW - 2*MARGIN;
+    const totalImgH = (canvas.height / canvas.width) * imgW;
+    const pageH = PH - 24; // space below header
+    const totalPages = Math.ceil(totalImgH / pageH);
+
+    for(let p = 0; p < totalPages; p++){
+      if(p > 0){ pdf.addPage();
+        pdf.setFillColor(2,42,34); pdf.rect(0,0,PW,18,'F');
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(11); pdf.setTextColor(255,255,255);
+        pdf.text(titulo.toUpperCase(), MARGIN, 12);
+        pdf.setFont('helvetica','bold'); pdf.setFontSize(8); pdf.setTextColor(200,210,208);
+        pdf.text(periodoFull.toUpperCase(), PW-MARGIN, 12, {align:'right'});
+        pdf.setDrawColor(42,96,106); pdf.setLineWidth(0.4); pdf.line(0,18,PW,18);
+      }
+
+      // Crop canvas for this page
+      const srcY = p * (canvas.height / totalPages);
+      const srcH = canvas.height / totalPages;
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = srcH;
+      const ctx = pageCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, -srcY);
+      const sliceH = Math.min(pageH, totalImgH - p*pageH);
+      pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', MARGIN, 22, imgW, sliceH);
+    }
+
+    // Footer
+    pdf.setFont('helvetica','normal'); pdf.setFontSize(7); pdf.setTextColor(160,170,168);
+    pdf.text('LAGHETTO HOTÉIS', PW/2, PH - 4, {align:'center'});
+
+    pdf.save(`Laghetto_${titulo.replace(/\s+/g,'_')}_${periodoFull.replace(/[^a-zA-Z0-9]/g,'_')}.pdf`);
+  } catch(e){
+    console.error('downloadTabPDF error:', e);
+    alert('Erro ao gerar PDF: ' + e.message);
+  }
+
+  btn.textContent = '📄 PDF';
+  btn.disabled = false;
+}
+
 </script>
 </body>
 </html>
