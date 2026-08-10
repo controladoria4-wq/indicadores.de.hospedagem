@@ -2518,7 +2518,7 @@ async function generatePDF(){
     // Progress
     const pct = Math.round((pi+1)/pdfPages.length*100);
     document.getElementById('pdfProgressBar').style.width = pct+'%';
-    document.getElementById('pdfProgressTxt').textContent = `${praca} (${pi+1}/${opts.pracas.length})`;
+    document.getElementById('pdfProgressTxt').textContent = `${page.label} (${pi+1}/${pdfPages.length})`;
     await new Promise(r=>setTimeout(r,20));
   }
 
@@ -2855,30 +2855,36 @@ async function addAnaliticoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
   pdfHeader(pdf, 'Analítico de Indicadores', periodoFull, PW, PH, MARGIN);
   if(!window.html2canvas) return;
 
-  // Apply PDF filters to dashboard state
+  // Save state, apply PDF period
   const origMes = S.mes;
-  S.mes = opts.meses[opts.meses.length-1]; // use last month selected
+  S.mes = opts.meses[opts.meses.length-1];
 
-  // Switch to tabela and render
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-tabela').classList.add('active');
+  // Make view visible and render
+  document.querySelectorAll('.view').forEach(v=>{ v.style.display=''; v.classList.remove('active'); });
+  const tabEl = document.getElementById('view-tabela');
+  tabEl.classList.add('active');
+  tabEl.style.display = 'block';
   render();
-  await new Promise(r=>setTimeout(r,300));
+  await new Promise(r=>setTimeout(r,500));
 
   const el = document.getElementById('tableWrap');
-  if(!el){ S.mes=origMes; render(); return; }
+  if(!el || !el.offsetHeight){ S.mes=origMes; return; }
 
   try{
     const canvas = await html2canvas(el,{
       backgroundColor:'#fff', scale:2, useCORS:true, logging:false,
-      width:el.scrollWidth, windowWidth:el.scrollWidth+100
+      width:Math.max(el.scrollWidth,800),
+      windowWidth:Math.max(el.scrollWidth,800)+100
     });
-    const imgW=PW-2*MARGIN;
-    const imgH=Math.min(PH-30,(canvas.height/canvas.width)*imgW);
-    pdf.addImage(canvas.toDataURL('image/png'),'PNG',MARGIN,26,imgW,imgH);
-  } catch(e){ console.error('addAnaliticoPDF error:', e); }
+    if(canvas.width > 0 && canvas.height > 0){
+      const imgW = PW - 2*MARGIN;
+      const imgH = Math.min(PH-32, (canvas.height/canvas.width)*imgW);
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, 26, imgW, imgH);
+    }
+  } catch(e){ console.error('addAnaliticoPDF:', e); }
 
-  S.mes=origMes; render();
+  S.mes = origMes;
+  render();
 }
 
 async function addComparativoPDF(pdf, opts, PW, PH, MARGIN, periodoFull){
