@@ -2792,9 +2792,16 @@ async function generatePDF(){
   };
 
   const nIndics = opts.indicadores.length;
-  // Layout: nIndics charts per page, side by side
-  const chartW_mm = (PW - 2*MARGIN - (nIndics-1)*8) / nIndics;
-  const chartH_mm = PH - MARGIN - 44; // leave room for header
+  // Layout em grade: distribui os indicadores em linhas e colunas em vez de
+  // espremer tudo numa única linha (o que deixava os cartões finos e compridos
+  // quando havia 3 ou 4 indicadores selecionados).
+  const GRID_COLS = nIndics <= 2 ? nIndics : Math.ceil(Math.sqrt(nIndics));
+  const GRID_ROWS = Math.ceil(nIndics / GRID_COLS);
+  const COL_GAP = 8, ROW_GAP = 8;
+  const HEADER_TOP = 26; // espaço reservado para o cabeçalho da página
+  const chartW_mm = (PW - 2*MARGIN - (GRID_COLS-1)*COL_GAP) / GRID_COLS;
+  const cardH_mm = (PH - HEADER_TOP - MARGIN - (GRID_ROWS-1)*ROW_GAP) / GRID_ROWS;
+  const chartH_mm = cardH_mm - 12; // desconta a faixa do título dentro do cartão
   const PX_PER_MM = 8; // boa resolução sem encolher texto
   const chartW_px = Math.round(chartW_mm * PX_PER_MM);
   const chartH_px = Math.round(chartH_mm * PX_PER_MM);
@@ -2845,8 +2852,10 @@ async function generatePDF(){
       drawPdfBarChart(canvas, vals, opts.series, def.fv, chartW_px, chartH_px);
 
       const imgData = canvas.toDataURL('image/png');
-      const cx = MARGIN + ii * (chartW_mm + 8);
-      const cy = 26;
+      const gridRow = Math.floor(ii / GRID_COLS);
+      const gridCol = ii % GRID_COLS;
+      const cx = MARGIN + gridCol * (chartW_mm + COL_GAP);
+      const cy = HEADER_TOP + gridRow * (cardH_mm + ROW_GAP);
 
       // Chart border
       pdf.setDrawColor(212, 226, 232);
