@@ -812,7 +812,7 @@ async function fetchCSVStrategy(aba){
 
 async function loadFromSheets(){
   DB = DB_FALLBACK; // garante que nunca fica null
-  showLoadingBanner('Conectando ao Google Sheets...');
+  // showLoadingBanner('Conectando ao Google Sheets...');
   try{
     showLoadingBanner('Carregando Hotéis (1/7)...');
     const hoteisCsv=await fetchCSVStrategy(SHEET_ABAS.hoteis);
@@ -840,6 +840,7 @@ async function loadFromSheets(){
     };
     const now=new Date();
     showLoadingBanner(`Dados atualizados — ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`, 'ok');
+    setTimeout(hideLoadingBanner, 3000);
     return true;
   } catch(err){
     console.error('[Sheets] Erro:', err.message);
@@ -2468,7 +2469,7 @@ async function generatePDF(){
     // Calc data based on type
     let data;
     if(page.type === 'praca'){
-      data = calcPracaData(page.key, opts.meses, opts.hoteisSel);
+      data = calcPracaDataByHoteis(DB.hotels.filter(h=>h.praca===page.key).map(h=>h.nome), opts.meses);
     } else if(page.type === 'regional'){
       // Sum all hotels in regional
       const regHoteis = DB.hotels.filter(h=>h.regional===page.key).map(h=>h.nome);
